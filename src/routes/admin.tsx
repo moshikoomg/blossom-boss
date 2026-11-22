@@ -1,3 +1,4 @@
+import { GOOGLE_AUTH_ENABLED } from "@/lib/auth-flags";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -124,14 +125,14 @@ function AdminLoginGate() {
         </div>
         <div>
           <h1 className="text-xl font-black">כניסה לניהול החנות</h1>
-          <p className="text-sm text-muted-foreground mt-1">התחבר עם Google כדי להיכנס לדאשבורד.</p>
+          <p className="text-sm text-muted-foreground mt-1">{GOOGLE_AUTH_ENABLED ? "התחבר עם Google כדי להיכנס לדאשבורד." : "התחבר עם אימייל וסיסמה כדי להיכנס לדאשבורד."}</p>
         </div>
         <button
           onClick={signIn}
           disabled={busy}
           className="w-full h-12 rounded-xl bg-foreground text-background font-bold hover:scale-[1.01] transition disabled:opacity-60"
         >
-          {busy ? "מתחבר…" : "התחבר עם Google"}
+          {busy ? "מתחבר…" : GOOGLE_AUTH_ENABLED ? "התחבר עם Google" : "התחברות"}
         </button>
         <a
           href="/?openOnboarding=1"
