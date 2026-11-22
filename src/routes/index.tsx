@@ -980,12 +980,13 @@ function CardItem({ p, cat, gallery, activeIdx, setActiveIdx, onOpen, onZoom, on
   const primaryImage = normalizeProductImageUrl(p.image_url);
   const images = safeGallery.length ? safeGallery : (primaryImage ? [primaryImage] : []);
   const main = images[activeIdx] || images[0] || primaryImage;
-  if (!main) return null;
+  // Hooks must run on every render, before any early return.
   const isMobile = useIsMobile();
-  const hasMulti = images.length > 1;
   const [loaded, setLoaded] = useState<Record<string, boolean>>({});
   const [hovering, setHovering] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  if (!main) return null;
+  const hasMulti = images.length > 1;
   const go = (n: number) => setActiveIdx(((n % images.length) + images.length) % images.length);
   const goAndScroll = (n: number) => {
     const next = ((n % images.length) + images.length) % images.length;

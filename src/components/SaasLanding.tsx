@@ -1,3 +1,4 @@
+import { GOOGLE_AUTH_ENABLED } from "@/lib/auth-flags";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import {
   Dialog,
@@ -657,7 +658,7 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
                     שתי לחיצות לחנות שלך
                   </DialogTitle>
                   <DialogDescription className="text-sm leading-relaxed pt-1.5 text-muted-foreground">
-                    התחברות מאובטחת עם Google כדי שנוכל לשמור עבורך את החנות ולתת לך גישת מנהל מלאה.
+                    {GOOGLE_AUTH_ENABLED ? "התחברות מאובטחת עם Google" : "הרשמה קצרה עם אימייל וסיסמה"} כדי שנוכל לשמור עבורך את החנות ולתת לך גישת מנהל מלאה.
                   </DialogDescription>
                 </DialogHeader>
 
@@ -669,12 +670,12 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
                   {signingIn ? (
                     <><Loader2 className="animate-spin" size={18} /> מתחבר…</>
                   ) : (
-                    <><GoogleIcon /> התחבר עם Google</>
+                    GOOGLE_AUTH_ENABLED ? <><GoogleIcon /> התחבר עם Google</> : <>הרשמה / התחברות עם אימייל</>
                   )}
                 </button>
 
                 <ul className="mt-6 space-y-2.5 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2"><Check size={16} className="text-primary flex-shrink-0" /> ללא טפסים. ללא קוד SMS.</li>
+                  <li className="flex items-center gap-2"><Check size={16} className="text-primary flex-shrink-0" /> {GOOGLE_AUTH_ENABLED ? "ללא טפסים. ללא קוד SMS." : "בלי קוד SMS. רק אימייל וסיסמה."}</li>
                   <li className="flex items-center gap-2"><Check size={16} className="text-primary flex-shrink-0" /> החנות נשמרת לחשבון שלך אוטומטית.</li>
                   <li className="flex items-center gap-2"><Check size={16} className="text-primary flex-shrink-0" /> אפשר לבטל בכל רגע.</li>
                 </ul>

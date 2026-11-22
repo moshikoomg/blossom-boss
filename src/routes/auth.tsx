@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { GOOGLE_AUTH_ENABLED, safeNextPath } from "@/lib/auth-flags";
+import { authErrorHe } from "@/lib/auth-errors";
 import {
   awaitSafeSession,
   clearOAuthStart,
@@ -23,6 +24,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
+  const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
   // If a Google-authenticated user lands here (e.g. via a stale link),
   // skip re-auth entirely and forward them to admin — their session is
@@ -83,14 +85,19 @@ function AuthPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setErr(""); setLoading(true);
+    setErr(""); setInfo(""); setLoading(true);
+    const next = safeNextPath(new URLSearchParams(window.location.search).get("next"));
     const fn = mode === "in"
       ? supabase.auth.signInWithPassword({ email, password })
-      : supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
-    const { error } = await fn;
+      : supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin + (next || "/admin") } });
+    const { data, error } = await fn;
     setLoading(false);
-    if (error) { setErr(error.message); return; }
-    const next = safeNextPath(new URLSearchParams(window.location.search).get("next"));
+    if (error) { setErr(authErrorHe(error.message)); return; }
+    // Email confirmation is on: sign-up returns no session until the link is clicked.
+    if (mode === "up" && !data.session) {
+      setInfo(`שלחנו מייל אימות ל-${email}. לחצו על הקישור במייל כדי להמשיך (כדאי לבדוק גם בספאם).`);
+      return;
+    }
     if (next) { window.location.assign(next); return; }
     navigate({ to: "/admin" });
   }
@@ -135,6 +142,7 @@ function AuthPage() {
         <h1 className="text-2xl font-black text-foreground text-center">{mode === "in" ? "כניסה" : "הרשמה"}</h1>
         <p className="text-sm text-muted-foreground text-center">כניסת מנהלים ושליחים</p>
         {err && <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg">{err}</div>}
+        {info && <div role="status" className="bg-primary/10 text-foreground text-sm p-3 rounded-lg">{info}</div>}
         <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="אימייל" className="w-full bg-background border border-input rounded-xl px-4 py-3 outline-none focus:border-primary" />
         <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="סיסמה" className="w-full bg-background border border-input rounded-xl px-4 py-3 outline-none focus:border-primary" />
         <button disabled={loading} type="submit" className="w-full bg-primary text-primary-foreground font-black py-3 rounded-xl hover:bg-primary/90 disabled:opacity-50">
@@ -154,3 +162,4 @@ function AuthPage() {
     </div>
   );
 }
+

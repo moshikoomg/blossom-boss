@@ -1,0 +1,20 @@
+-- Minimal stand-ins for the Supabase auth/storage schemas, so migrations run on plain Postgres.
+DO $$ BEGIN CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS; CREATE ROLE authenticator NOLOGIN; CREATE ROLE supabase_admin; CREATE ROLE supabase_auth_admin; CREATE ROLE supabase_storage_admin; CREATE ROLE dashboard_user; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE SCHEMA auth; CREATE SCHEMA storage; CREATE SCHEMA extensions; CREATE SCHEMA cron; CREATE SCHEMA net; CREATE SCHEMA vault;
+CREATE TABLE auth.users(id uuid primary key default gen_random_uuid(), email text, aud text, role text, instance_id uuid, raw_user_meta_data jsonb default '{}', raw_app_meta_data jsonb default '{}', is_anonymous boolean default false, created_at timestamptz default now(), email_confirmed_at timestamptz, phone text, last_sign_in_at timestamptz);
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ select nullif(current_setting('request.jwt.claims',true)::json->>'sub','')::uuid $$;
+CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ select coalesce(current_setting('request.jwt.claims',true)::json->>'role', current_user) $$;
+CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ select coalesce(current_setting('request.jwt.claims',true),'{}')::jsonb $$;
+CREATE TABLE storage.buckets(id text primary key, name text, public boolean default false, file_size_limit bigint, allowed_mime_types text[], owner uuid, created_at timestamptz default now(), updated_at timestamptz default now());
+CREATE TABLE storage.objects(id uuid primary key default gen_random_uuid(), bucket_id text, name text, owner uuid, metadata jsonb, created_at timestamptz default now(), updated_at timestamptz default now());
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+CREATE FUNCTION storage.foldername(name text) RETURNS text[] LANGUAGE sql AS $$ select string_to_array(name,'/') $$;
+CREATE FUNCTION storage.filename(name text) RETURNS text LANGUAGE sql AS $$ select (string_to_array(name,'/'))[array_length(string_to_array(name,'/'),1)] $$;
+GRANT USAGE ON SCHEMA public, auth, storage TO anon, authenticated, service_role;
+GRANT ALL ON storage.objects TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION auth.uid(), auth.role(), auth.jwt() TO anon, authenticated, service_role;
+CREATE PUBLICATION supabase_realtime;
