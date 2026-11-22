@@ -6,7 +6,8 @@ import { useCart, itemKey, type CartItem } from "@/lib/cart";
 import { ArrowRight, CreditCard, MapPin, Plus, Smartphone, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { createMeshulamPayment } from "@/lib/meshulam.functions";
+import { placeOrder } from "@/lib/checkout.functions";
+import { rememberReceipts } from "@/lib/receipts";
 import { useStore } from "@/lib/store-context";
 
 export const Route = createFileRoute("/checkout")({
@@ -33,7 +34,7 @@ function CheckoutPage() {
   const [stops, setStops] = useState<Stop[]>([newStop(), newStop()]);
   // map of itemKey -> stopId
   const [assign, setAssign] = useState<Record<string, string>>({});
-  const meshulamFn = useServerFn(createMeshulamPayment);
+  const placeOrderFn = useServerFn(placeOrder);
   const { store: currentStore } = useStore();
 
   // Validation schema used before any DB write (single-mode + multi-mode email).
@@ -131,11 +132,22 @@ function CheckoutPage() {
       return;
     }
 
+    if (!currentStore?.id) { toast.error("החנות לא זוהתה. רעננו את הדף ונסו שוב."); return; }
+    const toItem = (it: CartItem) => ({
+      productId: it.productId,
+      qty: it.qty,
+      sizeLabel: it.sizeLabel || undefined,
+      cardText: it.cardText || undefined,
+      extras: (it.extras || []).map((e) => ({ id: e.id, qty: e.qty || 1 })),
+    });
+
+    let stopsPayload: { contact: { name: string; phone: string; email: string; address: string; notes: string }; items: ReturnType<typeof toItem>[] }[];
+    let groupedStops: { stop: Stop; items: CartItem[] }[] = [];
+
     if (multiMode) {
       // Email is collected once at the top in multi-mode too.
       const emailRes = emailSchema.safeParse(email);
       if (!emailRes.success) { toast.error(emailRes.error.issues[0].message); return; }
-      // validate stops
       for (const s of stops) {
         if (!s.name || !s.phone || !s.address) {
           toast.error("יש למלא שם, טלפון וכתובת לכל יעד");
@@ -153,139 +165,59 @@ function CheckoutPage() {
         arr.push(it);
         grouped.set(sid, arr);
       }
-      // each stop must have ≥1 item
       for (const s of stops) {
         if (!grouped.get(s.id)?.length) { toast.error(`היעד של ${s.name || "ללא שם"} ריק — שייך/י אליו לפחות מוצר אחד או מחק/י את היעד`); return; }
       }
-
-      setLoading(true);
-      const { data: u } = await supabase.auth.getUser();
-      const createdIds: string[] = [];
-      for (const s of stops) {
-        const stopItems = grouped.get(s.id)!;
-        const stopSubtotal = stopItems.reduce((a, b) => a + b.qty * (b.price + (b.extras?.reduce((x,e)=>x+e.price,0)||0)), 0);
-        const stopTotal = stopSubtotal + shipping;
-        const { data: order, error } = await supabase.from("orders").insert({
-          user_id: u.user?.id ?? null,
-          customer_name: s.name,
-          customer_phone: s.phone,
-          customer_email: email,
-          delivery_address: s.address,
-          delivery_notes: s.notes,
-          subtotal: stopSubtotal,
-          shipping,
-          total: stopTotal,
-          discount: 0,
-          coupon_code: null,
-          payment_method: paymentMethod,
-          payment_status: "pending",
-          terms_accepted_at: new Date().toISOString(),
-        }).select().single();
-        if (error || !order) { setLoading(false); toast.error("שגיאה ביצירת ההזמנה"); return; }
-        await supabase.from("order_items").insert(stopItems.map((it) => ({
-          order_id: order.id,
-          product_id: it.productId,
-          product_name: it.name,
-          product_image: it.image,
-          unit_price: it.price,
-          quantity: it.qty,
-          extras: it.extras || [],
-          card_text: it.cardText || "",
-        })));
-        createdIds.push(order.id);
-        if (paymentMethod === "bit" && whatsappNumber) {
-          const cleaned = whatsappNumber.replace(/[^\d]/g, "");
-          const wa = `https://wa.me/${cleaned}?text=${buildWhatsappForStop(order.order_number, s, stopItems, shipping, stopTotal)}`;
-          await supabase.from("orders").update({ sent_to_whatsapp_at: new Date().toISOString() }).eq("id", order.id);
-          window.open(wa, "_blank");
-        }
-      }
-      if (paymentMethod === "credit") {
-        // For credit, route to first order's payment; remaining stay pending
-        try {
-          const firstId = createdIds[0];
-          const res = await meshulamFn({ data: { orderId: firstId, sum: total, fullName: name || stops[0].name, phone: phone || stops[0].phone, email } });
-          if (res?.url) { clear(); window.location.href = res.url; return; }
-          toast.error(res?.error || "שגיאה ביצירת תשלום אשראי");
-          setLoading(false); return;
-        } catch (err: any) { toast.error(err?.message || "שגיאה בסליקה"); setLoading(false); return; }
-      }
-      clear(); setLoading(false);
-      toast.success(`${createdIds.length} הזמנות נשלחו!`);
-      nav({ to: "/track/$orderId", params: { orderId: createdIds[0] } });
-      return;
+      groupedStops = stops.map((s) => ({ stop: s, items: grouped.get(s.id)! }));
+      stopsPayload = groupedStops.map(({ stop: s, items: its }) => ({
+        contact: { name: s.name, phone: s.phone, email, address: s.address, notes: s.notes },
+        items: its.map(toItem),
+      }));
+    } else {
+      const parsed = contactSchema.safeParse({ email, name, phone, address });
+      if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
+      stopsPayload = [{ contact: { name, phone, email, address, notes }, items: items.map(toItem) }];
     }
 
     setLoading(true);
-    // Single-mode strict validation.
-    const parsed = contactSchema.safeParse({ email, name, phone, address });
-    if (!parsed.success) {
+    let res: Awaited<ReturnType<typeof placeOrderFn>>;
+    try {
+      res = await placeOrderFn({
+        data: { storeId: currentStore.id, payment: paymentMethod, coupon: multiMode ? null : coupon?.code || null, stops: stopsPayload },
+      });
+    } catch (err: any) {
       setLoading(false);
-      toast.error(parsed.error.issues[0].message);
+      toast.error(err?.message || "שגיאה ביצירת ההזמנה");
       return;
     }
-    const { data: u } = await supabase.auth.getUser();
-    const { data: order, error } = await supabase.from("orders").insert({
-      user_id: u.user?.id ?? null,
-      customer_name: name,
-      customer_phone: phone,
-      customer_email: email,
-      delivery_address: address,
-      delivery_notes: notes,
-      subtotal,
-      shipping,
-      total,
-      discount,
-      coupon_code: coupon?.code || null,
-      payment_method: paymentMethod,
-      payment_status: "pending",
-      terms_accepted_at: new Date().toISOString(),
-    }).select().single();
-    if (error || !order) { setLoading(false); toast.error("שגיאה ביצירת ההזמנה"); return; }
-    const itemsRows = items.map((it) => ({
-      order_id: order.id,
-      product_id: it.productId,
-      product_name: it.name,
-      product_image: it.image,
-      unit_price: it.price,
-      quantity: it.qty,
-      extras: it.extras || [],
-      card_text: it.cardText || "",
-    }));
-    await supabase.from("order_items").insert(itemsRows);
-
-    // Coupon usage tracking
-    if (coupon?.coupon_id) {
-      await supabase.rpc("record_coupon_usage" as any, {
-        _coupon_id: coupon.coupon_id,
-        _order_id: order.id,
-        _user_email: email,
-        _discount_amount: discount,
-      });
-    }
+    if (!res.ok) { setLoading(false); toast.error(res.error); return; }
+    const first = res.orders[0];
+    rememberReceipts(res.orders);
 
     if (paymentMethod === "credit") {
-      try {
-        const res = await meshulamFn({ data: { orderId: order.id, sum: total, fullName: name, phone, email } });
-        if (res?.url) { clear(); window.location.href = res.url; return; }
-        toast.error(res?.error || "שגיאה ביצירת תשלום אשראי");
-        setLoading(false); return;
-      } catch (err: any) {
-        toast.error(err?.message || "שגיאה בסליקה");
-        setLoading(false); return;
-      }
+      if (res.paymentUrl) { clear(); window.location.href = res.paymentUrl; return; }
+      toast.error(res.paymentError || "שגיאה ביצירת תשלום אשראי");
+      setLoading(false);
+      return;
     }
 
-    // Bit / cash → open WhatsApp
+    // Bit → open WhatsApp to the shop with the order summary.
     if (whatsappNumber) {
       const cleaned = whatsappNumber.replace(/[^\d]/g, "");
-      const wa = `https://wa.me/${cleaned}?text=${buildWhatsappMessage(order.order_number)}`;
-      await supabase.from("orders").update({ sent_to_whatsapp_at: new Date().toISOString() }).eq("id", order.id);
-      window.open(wa, "_blank");
+      if (multiMode) {
+        groupedStops.forEach(({ stop: s, items: its }, i) => {
+          const o = res.ok ? res.orders[i] : null;
+          if (!o) return;
+          const stopSubtotal = its.reduce((a, b) => a + b.qty * (b.price + (b.extras?.reduce((x, e) => x + e.price, 0) || 0)), 0);
+          window.open(`https://wa.me/${cleaned}?text=${buildWhatsappForStop(o.order_number, s, its, shipping, stopSubtotal + shipping)}`, "_blank");
+        });
+      } else {
+        window.open(`https://wa.me/${cleaned}?text=${buildWhatsappMessage(first.order_number)}`, "_blank");
+      }
     }
     clear(); setLoading(false);
-    toast.success("ההזמנה התקבלה!");
-    nav({ to: "/track/$orderId", params: { orderId: order.id } });
+    toast.success(res.orders.length > 1 ? `${res.orders.length} הזמנות נשלחו!` : "ההזמנה התקבלה!");
+    nav({ to: "/track/$orderId", params: { orderId: first.id }, search: { t: first.receipt_token } });
   }
 
   const stopBadge = (sid: string) => {

@@ -14,17 +14,24 @@ export type PricingRule = {
   priority: number;
 };
 
-let cache: { rules: PricingRule[]; ts: number } | null = null;
+const cache = new Map<string, { rules: PricingRule[]; ts: number }>();
 
-export async function getPricingRules(): Promise<PricingRule[]> {
-  if (cache && Date.now() - cache.ts < 60000) return cache.rules;
-  const { data } = await supabase.from("pricing_rules").select("*").eq("active", true);
+/** Pricing rules for ONE store. Without a store id, no rules apply. */
+export async function getPricingRules(storeId?: string | null): Promise<PricingRule[]> {
+  if (!storeId) return [];
+  const cached = cache.get(storeId);
+  if (cached && Date.now() - cached.ts < 60000) return cached.rules;
+  const { data } = await supabase
+    .from("pricing_rules")
+    .select("*")
+    .eq("store_id", storeId)
+    .eq("active", true);
   const rules = (data || []) as PricingRule[];
-  cache = { rules, ts: Date.now() };
+  cache.set(storeId, { rules, ts: Date.now() });
   return rules;
 }
 
-export function clearPricingCache() { cache = null; }
+export function clearPricingCache() { cache.clear(); }
 
 export function applyRules(basePrice: number, ctx: { productId?: string; categoryId?: string | null }, rules: PricingRule[], when = new Date()): number {
   const dow = when.getDay();

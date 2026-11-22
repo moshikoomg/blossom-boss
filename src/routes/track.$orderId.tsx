@@ -1,9 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrderReceipt } from "@/lib/checkout.functions";
+import { receiptTokenFor } from "@/lib/receipts";
 import { CheckCircle2, Clock, Package, Truck } from "lucide-react";
 
 export const Route = createFileRoute("/track/$orderId")({
+  validateSearch: (s: Record<string, unknown>) => ({ t: typeof s.t === "string" ? s.t : undefined }),
   head: () => ({ meta: [{ title: "מעקב הזמנה" }] }),
   component: TrackPage,
 });
@@ -20,17 +24,29 @@ function TrackPage() {
   const { orderId } = Route.useParams();
   const [order, setOrder] = useState<{ order_number: string; status: string; total: number; customer_name: string; delivery_address: string } | null>(null);
 
+  const { t } = Route.useSearch();
+  const receiptFn = useServerFn(getOrderReceipt);
+  const [missing, setMissing] = useState(false);
+
   useEffect(() => {
     let cancel = false;
+    const token = t || receiptTokenFor(orderId);
     async function load() {
+      // Customers: unguessable receipt token. Shop staff: their own RLS access.
+      if (token) {
+        const r = await receiptFn({ data: { orderId, token } }).catch(() => null);
+        if (!cancel) { if (r) setOrder(r); else setMissing(true); }
+        return;
+      }
       const { data } = await supabase.from("orders").select("order_number,status,total,customer_name,delivery_address").eq("id", orderId).maybeSingle();
-      if (!cancel && data) setOrder(data as never);
+      if (!cancel) { if (data) setOrder(data as never); else setMissing(true); }
     }
     load();
-    const ch = supabase.channel(`order-${orderId}`).on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `id=eq.${orderId}` }, load).subscribe();
-    return () => { cancel = true; supabase.removeChannel(ch); };
-  }, [orderId]);
+    const timer = setInterval(load, 20000);
+    return () => { cancel = true; clearInterval(timer); };
+  }, [orderId, t, receiptFn]);
 
+  if (!order && missing) return <div dir="rtl" className="min-h-screen flex items-center justify-center text-muted-foreground p-6 text-center">לא מצאנו את ההזמנה. פתחו את הקישור מהודעת האישור.</div>;
   if (!order) return <div dir="rtl" className="min-h-screen flex items-center justify-center text-muted-foreground">טוען...</div>;
   const idx = STEPS.findIndex((s) => s.key === order.status);
 

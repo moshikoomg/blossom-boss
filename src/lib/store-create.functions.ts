@@ -3,6 +3,8 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PLATFORM_TEMPLATE_STORE_ID } from "./platform-template";
+import { createLatinSlug } from "./store-slug";
+import { getPlanSettings, trialEndsFromNow } from "./plan-settings.server";
 // Strict image rule: a product/add-on is only kept active if the template's
 // primary image_url is a real http(s) URL. Gallery fallbacks and placeholder
 // SVGs are intentionally NOT used — invalid images cause `active=false`.
@@ -18,14 +20,9 @@ const ThemeSchema = z
   })
   .partial();
 
+// Store links must be Latin-only (/s/<slug>): Hebrew names are transliterated.
 function slugify(name: string) {
-  const base = name
-    .toLowerCase()
-    .trim()
-    .replace(/[^\p{L}\p{N}]+/gu, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
-  return base || "store";
+  return createLatinSlug(name);
 }
 
 export const createStoreForUser = createServerFn({ method: "POST" })
@@ -79,10 +76,10 @@ export const createStoreForUser = createServerFn({ method: "POST" })
       .select("id")
       .maybeSingle();
 
-    // 30-day Pro trial: the merchant gets the full Pro plan + AI for 30 days,
+    // Pro trial (TRIAL_DAYS, default 20, editable in Super Admin): full Pro plan + AI,
     // but during trial the runtime quota guard caps usage at 10% of Pro
     // (so trolls can't burn $$$ of API costs before flipping to paid).
-    const trialEnds = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+    const trialEnds = trialEndsFromNow((await getPlanSettings()).trial_days);
     await supabaseAdmin
       .from("store_subscriptions")
       .insert({
