@@ -34,6 +34,7 @@ import { Route as ApiPublicStartScanRouteImport } from './routes/api/public/star
 import { Route as ApiPublicSendOtpRouteImport } from './routes/api/public/send-otp'
 import { Route as ApiPublicScanResultRouteImport } from './routes/api/public/scan-result'
 import { Route as ApiPublicRunScrapeRouteImport } from './routes/api/public/run-scrape'
+import { Route as ApiPublicMeshulamWebhookRouteImport } from './routes/api/public/meshulam-webhook'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -160,6 +161,12 @@ const ApiPublicRunScrapeRoute = ApiPublicRunScrapeRouteImport.update({
   path: '/api/public/run-scrape',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMeshulamWebhookRoute =
+  ApiPublicMeshulamWebhookRouteImport.update({
+    id: '/api/public/meshulam-webhook',
+    path: '/api/public/meshulam-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/s/$slug': typeof SSlugRoute
   '/super-admin/landing': typeof SuperAdminLandingRoute
   '/track/$orderId': typeof TrackOrderIdRoute
+  '/api/public/meshulam-webhook': typeof ApiPublicMeshulamWebhookRoute
   '/api/public/run-scrape': typeof ApiPublicRunScrapeRoute
   '/api/public/scan-result': typeof ApiPublicScanResultRoute
   '/api/public/send-otp': typeof ApiPublicSendOtpRoute
@@ -208,6 +216,7 @@ export interface FileRoutesByTo {
   '/s/$slug': typeof SSlugRoute
   '/super-admin/landing': typeof SuperAdminLandingRoute
   '/track/$orderId': typeof TrackOrderIdRoute
+  '/api/public/meshulam-webhook': typeof ApiPublicMeshulamWebhookRoute
   '/api/public/run-scrape': typeof ApiPublicRunScrapeRoute
   '/api/public/scan-result': typeof ApiPublicScanResultRoute
   '/api/public/send-otp': typeof ApiPublicSendOtpRoute
@@ -236,6 +245,7 @@ export interface FileRoutesById {
   '/s/$slug': typeof SSlugRoute
   '/super-admin/landing': typeof SuperAdminLandingRoute
   '/track/$orderId': typeof TrackOrderIdRoute
+  '/api/public/meshulam-webhook': typeof ApiPublicMeshulamWebhookRoute
   '/api/public/run-scrape': typeof ApiPublicRunScrapeRoute
   '/api/public/scan-result': typeof ApiPublicScanResultRoute
   '/api/public/send-otp': typeof ApiPublicSendOtpRoute
@@ -265,6 +275,7 @@ export interface FileRouteTypes {
     | '/s/$slug'
     | '/super-admin/landing'
     | '/track/$orderId'
+    | '/api/public/meshulam-webhook'
     | '/api/public/run-scrape'
     | '/api/public/scan-result'
     | '/api/public/send-otp'
@@ -292,6 +303,7 @@ export interface FileRouteTypes {
     | '/s/$slug'
     | '/super-admin/landing'
     | '/track/$orderId'
+    | '/api/public/meshulam-webhook'
     | '/api/public/run-scrape'
     | '/api/public/scan-result'
     | '/api/public/send-otp'
@@ -319,6 +331,7 @@ export interface FileRouteTypes {
     | '/s/$slug'
     | '/super-admin/landing'
     | '/track/$orderId'
+    | '/api/public/meshulam-webhook'
     | '/api/public/run-scrape'
     | '/api/public/scan-result'
     | '/api/public/send-otp'
@@ -346,6 +359,7 @@ export interface RootRouteChildren {
   ProductsProductIdRoute: typeof ProductsProductIdRoute
   SSlugRoute: typeof SSlugRoute
   TrackOrderIdRoute: typeof TrackOrderIdRoute
+  ApiPublicMeshulamWebhookRoute: typeof ApiPublicMeshulamWebhookRoute
   ApiPublicRunScrapeRoute: typeof ApiPublicRunScrapeRoute
   ApiPublicScanResultRoute: typeof ApiPublicScanResultRoute
   ApiPublicSendOtpRoute: typeof ApiPublicSendOtpRoute
@@ -531,6 +545,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRunScrapeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/meshulam-webhook': {
+      id: '/api/public/meshulam-webhook'
+      path: '/api/public/meshulam-webhook'
+      fullPath: '/api/public/meshulam-webhook'
+      preLoaderRoute: typeof ApiPublicMeshulamWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -565,6 +586,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsProductIdRoute: ProductsProductIdRoute,
   SSlugRoute: SSlugRoute,
   TrackOrderIdRoute: TrackOrderIdRoute,
+  ApiPublicMeshulamWebhookRoute: ApiPublicMeshulamWebhookRoute,
   ApiPublicRunScrapeRoute: ApiPublicRunScrapeRoute,
   ApiPublicScanResultRoute: ApiPublicScanResultRoute,
   ApiPublicSendOtpRoute: ApiPublicSendOtpRoute,
