@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getRequestHeader, getRequestHost } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createMeshulamProcess } from "./meshulam.server";
+import { canTakeOrders, computeBillingState, type SubRow } from "./billing-state";
 
 // All storefront orders go through here. Prices, shipping and coupon discount
 // are recomputed in the database (phase1_checkout), never trusted from the browser.
@@ -49,6 +50,16 @@ async function currentUserId(): Promise<string | null> {
 export const placeOrder = createServerFn({ method: "POST" })
   .inputValidator((d) => PlaceOrderSchema.parse(d))
   .handler(async ({ data }) => {
+    // Soft paywall: after the trial / paid period plus a short grace, the shop stops taking orders.
+    const { data: sub } = await supabaseAdmin
+      .from("store_subscriptions")
+      .select("status,is_trial,trial_ends_at,current_period_end")
+      .eq("store_id", data.storeId)
+      .maybeSingle();
+    if (!canTakeOrders(computeBillingState(sub as SubRow | null))) {
+      return { ok: false as const, error: "החנות לא מקבלת הזמנות אונליין כרגע. אפשר ליצור קשר עם החנות ישירות." };
+    }
+
     const userId = await currentUserId();
     const orders: Placed[] = [];
     for (let i = 0; i < data.stops.length; i++) {

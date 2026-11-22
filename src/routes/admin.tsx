@@ -22,6 +22,7 @@ import { LegalEditor } from "@/components/LegalEditor";
 import { ThemeColorEditor } from "@/components/ThemeColorEditor";
 import { FeaturesPanel, PlanOverviewCard } from "@/components/FeaturesPanel";
 import { StoreLinkCard } from "@/components/StoreLinkCard";
+import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { OnboardingCoach, SetupShortcutButton } from "@/components/OnboardingCoach";
 import { TrialProgress } from "@/components/TrialProgress";
 import { QuotaUsagePanel } from "@/components/QuotaUsagePanel";
@@ -1054,6 +1055,7 @@ function DashboardSection() {
   return (
     <>
       <SectionHeader title="סקירה כללית" subtitle="מה קורה בחנות שלך עכשיו"/>
+      <SubscriptionBanner />
       <div className="mb-4">
         <StoreLinkCard />
       </div>

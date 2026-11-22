@@ -82,10 +82,9 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
         const body = await request.text();
         const secret = process.env.STRIPE_WEBHOOK_SECRET;
         const sig = request.headers.get("stripe-signature");
-        if (secret) {
-          if (!sig || !(await verifyStripeSignature(body, sig, secret))) {
-            return new Response("invalid signature", { status: 401 });
-          }
+        // Never accept unsigned events: without a secret configured, the endpoint is disabled.
+        if (!secret || !sig || !(await verifyStripeSignature(body, sig, secret))) {
+          return new Response("invalid signature", { status: 401 });
         }
         let event: any;
         try { event = JSON.parse(body); } catch { return new Response("bad json", { status: 400 }); }

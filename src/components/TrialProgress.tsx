@@ -14,7 +14,7 @@ const TONE = {
 } as const;
 
 function goToBilling() {
-  window.dispatchEvent(new CustomEvent("tmm:admin-goto-section", { detail: "settings" }));
+  window.dispatchEvent(new CustomEvent("tmm:open-subscribe"));
 }
 
 type Props = {
