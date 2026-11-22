@@ -2,6 +2,7 @@
 # Builds a throwaway database from all migrations and runs the tenant-isolation test.
 # Usage: PGHOST=... PGPORT=... PGUSER=postgres tests/db/run.sh
 set -euo pipefail
+export PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning"
 cd "$(dirname "$0")/../.."
 DB=${QA_DB:-blossom_qa}
 psql -q -d postgres -c "DROP DATABASE IF EXISTS $DB" -c "CREATE DATABASE $DB"

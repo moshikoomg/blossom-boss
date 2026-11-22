@@ -58,6 +58,14 @@ BEGIN
   BEGIN PERFORM get_user_id_by_email('qa-b@test.local'); INSERT INTO qa_results VALUES('A cannot look up users by email', false, 'allowed');
   EXCEPTION WHEN others THEN INSERT INTO qa_results VALUES('A cannot look up users by email', true, SQLSTATE); END;
 
+  -- image uploads: own folder only
+  BEGIN INSERT INTO storage.objects(bucket_id,name) VALUES('product-images', sa::text||'/rose.webp'); INSERT INTO qa_results VALUES('A can upload images to own folder', true, 'ok');
+  EXCEPTION WHEN others THEN INSERT INTO qa_results VALUES('A can upload images to own folder', false, SQLERRM); END;
+  BEGIN INSERT INTO storage.objects(bucket_id,name) VALUES('product-images', sb::text||'/evil.webp'); INSERT INTO qa_results VALUES('A cannot upload images into B folder', false, 'allowed');
+  EXCEPTION WHEN others THEN INSERT INTO qa_results VALUES('A cannot upload images into B folder', true, SQLSTATE); END;
+  BEGIN INSERT INTO storage.objects(bucket_id,name) VALUES('product-images', 'template/evil.webp'); INSERT INTO qa_results VALUES('A cannot overwrite platform template images', false, 'allowed');
+  EXCEPTION WHEN others THEN INSERT INTO qa_results VALUES('A cannot overwrite platform template images', true, SQLSTATE); END;
+
   -- ===== Staff member of A =====
   PERFORM pg_temp.act_as('authenticated', us, NULL);
   UPDATE store_members SET role='owner' WHERE user_id=us; GET DIAGNOSTICS n=ROW_COUNT; INSERT INTO qa_results VALUES('staff cannot promote self to owner', n=0, n::text);
