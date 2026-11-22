@@ -15,7 +15,7 @@ END $$;
 
 DO $$
 DECLARE ua uuid:=gen_random_uuid(); ub uuid:=gen_random_uuid(); us uuid:=gen_random_uuid();
-        sa uuid; sb uuid; pb uuid; ob uuid; n int;
+        sa uuid; sb uuid; pb uuid; ob uuid; supa uuid; supb uuid; n int;
   PROCEDURE_OK boolean;
 BEGIN
   INSERT INTO auth.users(id,email,aud,role) VALUES (ua,'qa-a@test.local','authenticated','authenticated'),(ub,'qa-b@test.local','authenticated','authenticated'),(us,'qa-staff@test.local','authenticated','authenticated');
@@ -30,6 +30,9 @@ BEGIN
   INSERT INTO store_subscriptions(store_id,plan_key,status,is_trial,trial_ends_at) VALUES(sb,'pro','trialing',true,now()+interval '20 days');
   INSERT INTO coupons(store_id,code,discount_type,discount_value) VALUES(sb,'BSECRET','percent',50);
   INSERT INTO site_settings(store_id,key,value) VALUES(sb,'shipping_price','40'::jsonb);
+  INSERT INTO suppliers(store_id,name) VALUES(sa,'A wholesaler') RETURNING id INTO supa;
+  INSERT INTO suppliers(store_id,name) VALUES(sb,'B wholesaler') RETURNING id INTO supb;
+  INSERT INTO purchase_orders(store_id,supplier_id,items) VALUES(sb,supb,'[{"name":"roses","qty":50}]');
 
   -- ===== Owner of store A attacking store B =====
   PERFORM pg_temp.act_as('authenticated', ua, NULL);
@@ -55,6 +58,15 @@ BEGIN
   EXCEPTION WHEN others THEN INSERT INTO qa_results VALUES('A cannot make itself platform admin', true, SQLSTATE); END;
   BEGIN SELECT count(*) INTO n FROM top_products(30,50); INSERT INTO qa_results VALUES('A cannot read cross-store sales (top_products)', n=0, n::text||' rows');
   EXCEPTION WHEN insufficient_privilege THEN INSERT INTO qa_results VALUES('A cannot read cross-store sales (top_products)', true, 'no execute'); END;
+  SELECT count(*) INTO n FROM suppliers WHERE store_id=sb;         INSERT INTO qa_results VALUES('A cannot read B suppliers', n=0, n::text);
+  SELECT count(*) INTO n FROM purchase_orders WHERE store_id=sb;   INSERT INTO qa_results VALUES('A cannot read B purchase orders', n=0, n::text);
+  SELECT count(*) INTO n FROM suppliers WHERE store_id=sa;         INSERT INTO qa_results VALUES('A reads own suppliers', n=1, n::text);
+  BEGIN INSERT INTO suppliers(store_id,name) VALUES(sb,'evil'); INSERT INTO qa_results VALUES('A cannot add supplier to B', false, 'allowed');
+  EXCEPTION WHEN others THEN INSERT INTO qa_results VALUES('A cannot add supplier to B', true, SQLSTATE); END;
+  BEGIN INSERT INTO purchase_orders(store_id,supplier_id) VALUES(sa,supb); INSERT INTO qa_results VALUES('A cannot order from B supplier', false, 'allowed');
+  EXCEPTION WHEN others THEN INSERT INTO qa_results VALUES('A cannot order from B supplier', true, SQLSTATE); END;
+  INSERT INTO purchase_orders(store_id,supplier_id,items) VALUES(sa,supa,'[{"name":"tulips","qty":20}]'); GET DIAGNOSTICS n=ROW_COUNT;
+  INSERT INTO qa_results VALUES('A can create own purchase order', n=1, n::text);
   BEGIN PERFORM get_user_id_by_email('qa-b@test.local'); INSERT INTO qa_results VALUES('A cannot look up users by email', false, 'allowed');
   EXCEPTION WHEN others THEN INSERT INTO qa_results VALUES('A cannot look up users by email', true, SQLSTATE); END;
 
@@ -71,12 +83,15 @@ BEGIN
   UPDATE store_members SET role='owner' WHERE user_id=us; GET DIAGNOSTICS n=ROW_COUNT; INSERT INTO qa_results VALUES('staff cannot promote self to owner', n=0, n::text);
   SELECT count(*) INTO n FROM products WHERE store_id=sa;          INSERT INTO qa_results VALUES('staff can work on own store products', n=1, n::text);
   SELECT count(*) INTO n FROM products WHERE store_id=sb;          INSERT INTO qa_results VALUES('staff cannot read other store', n=0, n::text);
+  SELECT count(*) INTO n FROM suppliers WHERE store_id=sa;         INSERT INTO qa_results VALUES('staff can see own store suppliers', n=1, n::text);
 
   -- ===== Anonymous shopper on store B =====
   PERFORM pg_temp.act_as('anon', NULL, sb);
   SELECT count(*) INTO n FROM products WHERE store_id=sb;          INSERT INTO qa_results VALUES('shopper sees only active B products', n=1, n::text);
   SELECT count(*) INTO n FROM products WHERE store_id=sa;          INSERT INTO qa_results VALUES('shopper on B does not get A products', n=0, n::text);
   SELECT count(*) INTO n FROM orders;                              INSERT INTO qa_results VALUES('shopper cannot read orders', n=0, n::text);
+  BEGIN SELECT count(*) INTO n FROM suppliers; INSERT INTO qa_results VALUES('shopper cannot read suppliers', n=0, n::text);
+  EXCEPTION WHEN insufficient_privilege THEN INSERT INTO qa_results VALUES('shopper cannot read suppliers', true, 'no access'); END;
   SELECT count(*) INTO n FROM coupons;                             INSERT INTO qa_results VALUES('shopper cannot list coupons', n=0, n::text);
   SELECT count(*) INTO n FROM store_subscriptions;                 INSERT INTO qa_results VALUES('shopper cannot read subscriptions', n=0, n::text);
   SELECT count(*) INTO n FROM site_settings WHERE key='shipping_price'; INSERT INTO qa_results VALUES('shopper can read the shop delivery price', n=1, n::text);
