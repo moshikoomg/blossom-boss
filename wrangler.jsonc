@@ -1,7 +1,14 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "tanstack-start-app",
+  "name": "blossom-boss",
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
+  // Public values only. Secrets (SUPABASE_SERVICE_ROLE_KEY, AI_API_KEY, MESHULAM_*, ...)
+  // are added in the Cloudflare dashboard: Worker → Settings → Variables and Secrets.
+  "vars": {
+    "SUPABASE_URL": "https://yjhtztmexsmshmzvqftf.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable__tl9sCbC5tT2kq21LEXPug_5O3Opn6h"
+  },
+  "observability": { "enabled": true }
 }
