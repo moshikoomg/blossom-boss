@@ -1,4 +1,4 @@
-export async function createMeshulamProcess(opts: { orderId: string; sum: number; fullName: string; phone: string; email: string; origin: string }) {
+export async function createMeshulamProcess(opts: { orderId: string; sum: number; fullName: string; phone: string; email: string; origin: string; receiptToken?: string }) {
   const userId = process.env.MESHULAM_USER_ID;
   const pageCode = process.env.MESHULAM_PAGE_CODE;
   const apiKey = process.env.MESHULAM_API_KEY;
@@ -16,7 +16,7 @@ export async function createMeshulamProcess(opts: { orderId: string; sum: number
     "pageField[phone]": opts.phone,
     "pageField[email]": opts.email,
     cField1: opts.orderId,
-    successUrl: `${opts.origin}/payment/success?order=${opts.orderId}`,
+    successUrl: `${opts.origin}/payment/success?order=${opts.orderId}${opts.receiptToken ? `&t=${opts.receiptToken}` : ""}`,
     cancelUrl: `${opts.origin}/payment/cancel?order=${opts.orderId}`,
     notifyUrl: `${opts.origin}/api/public/meshulam-webhook`,
   });

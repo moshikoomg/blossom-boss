@@ -123,21 +123,28 @@ export const salesChat = createServerFn({ method: "POST" })
       }
     }
 
+    // Always scope to ONE store. With no store resolved, match nothing
+    // (never fall back to every tenant's catalog).
+    const scopeId = storeId || "00000000-0000-0000-0000-000000000000";
     const productsQuery = supabaseAdmin
       .from("products")
       .select("id,name,description,price,rating,badge,stock,category_id")
-      .eq("active", true);
-    if (storeId) productsQuery.eq("store_id", storeId);
+      .eq("active", true)
+      .eq("store_id", scopeId);
 
-    const addonsQuery = supabaseAdmin.from("add_ons").select("id,name,price").eq("active", true);
-    if (storeId) addonsQuery.eq("store_id", storeId);
+    const addonsQuery = supabaseAdmin
+      .from("add_ons")
+      .select("id,name,price")
+      .eq("active", true)
+      .eq("store_id", scopeId);
 
     const [{ data: products }, { data: addons }, { data: sizes }] = await Promise.all([
       productsQuery.order("display_order").limit(80),
       addonsQuery.order("display_order").limit(40),
       supabaseAdmin
         .from("product_sizes")
-        .select("id,product_id,label,price")
+        .select("id,product_id,label,price,products!inner(store_id)")
+        .eq("products.store_id", scopeId)
         .order("display_order")
         .limit(300),
     ]);

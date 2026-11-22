@@ -1,8 +1,21 @@
 import { useEffect, useState } from "react";
 import { Sparkles, Clock, ArrowLeft } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
+import { useStore } from "@/lib/store-context";
+import { TRIAL_DAYS, remainingTrialDays, trialTone } from "@/lib/plans";
 
-const TRIAL_DAYS = 30;
+type Sub = { is_trial: boolean; trial_ends_at: string | null; status: string; created_at: string };
+
+const TONE = {
+  normal: { chip: "text-muted-foreground bg-muted/60", bar: "opacity-70", text: "" },
+  warning: { chip: "text-amber-800 bg-amber-100", bar: "[&>div]:bg-amber-500", text: "text-amber-700" },
+  danger: { chip: "text-red-800 bg-red-100", bar: "[&>div]:bg-red-500", text: "text-red-700" },
+} as const;
+
+function goToBilling() {
+  window.dispatchEvent(new CustomEvent("tmm:admin-goto-section", { detail: "settings" }));
+}
 
 type Props = {
   createdAt: string | null | undefined;
@@ -30,16 +43,42 @@ export function TrialProgress({ createdAt, setupRatio, nextTaskLabel, onJumpToNe
     return () => clearInterval(t);
   }, []);
 
+  const { store } = useStore();
+  const [sub, setSub] = useState<Sub | null>(null);
+  useEffect(() => {
+    if (!store?.id) return;
+    let cancel = false;
+    supabase
+      .from("store_subscriptions")
+      .select("is_trial,trial_ends_at,status,created_at")
+      .eq("store_id", store.id)
+      .maybeSingle()
+      .then(({ data }) => { if (!cancel) setSub((data as Sub | null) ?? null); });
+    return () => { cancel = true; };
+  }, [store?.id]);
+
+  // Countdown runs from the real trial end date; falls back to store creation.
   const created = createdAt ? new Date(createdAt).getTime() : now;
-  const elapsedDays = Math.max(0, Math.floor((now - created) / 86_400_000));
-  const remainingDays = Math.max(0, TRIAL_DAYS - elapsedDays);
-  const trialPct = Math.min(100, Math.round((elapsedDays / TRIAL_DAYS) * 100));
+  const trialEnds = sub?.trial_ends_at ?? new Date(created + TRIAL_DAYS * 86_400_000).toISOString();
+  const trialStart = sub?.created_at ? Date.parse(sub.created_at) : created;
+  const totalDays = Math.max(1, Math.round((Date.parse(trialEnds) - trialStart) / 86_400_000)) || TRIAL_DAYS;
+  const remainingDays = remainingTrialDays(trialEnds, now) ?? 0;
+  const elapsedDays = Math.max(0, totalDays - remainingDays);
+  const trialPct = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
+  const isPaid = sub ? !sub.is_trial && sub.status === "active" : false;
+  const tone = TONE[trialTone(remainingDays)];
   const setupPct = Math.max(0, Math.min(100, Math.round(setupRatio * 100)));
   const allDone = setupPct >= 100;
 
+  const trialLine =
+    remainingDays === 0
+      ? "תקופת הניסיון הסתיימה. הפעילו מנוי כדי שהחנות תמשיך לקבל הזמנות."
+      : remainingDays === 1
+        ? "נשאר יום אחד לניסיון החינמי."
+        : `נשארו ${remainingDays} ימי ניסיון חינם.`;
   const headline = allDone
-    ? "🎉 כל הכבוד! החנות שלך מכוילת ב-100% ומוכנה לקבל הזמנות"
-    : `החנות שלך מכוילת ב-${setupPct}%. נשארו עוד ${remainingDays} ימי הרצה חינם להתחיל להריץ לקוחות.`;
+    ? `🎉 כל הכבוד! החנות מוכנה לקבל הזמנות.${isPaid ? "" : ` ${trialLine}`}`
+    : `החנות שלך מכוילת ב-${setupPct}%.${isPaid ? "" : ` ${trialLine}`}`;
 
   return (
     <div dir="rtl" className="bg-gradient-to-l from-primary/10 via-card to-card border border-primary/30 rounded-2xl p-5 shadow-sm">
@@ -51,12 +90,14 @@ export function TrialProgress({ createdAt, setupRatio, nextTaskLabel, onJumpToNe
             <p className="text-xs text-muted-foreground">כל משימה שתסיים מקרבת אותך להזמנה ראשונה</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-full whitespace-nowrap">
-          <Clock size={12}/> נותרו {remainingDays} ימים מתוך {TRIAL_DAYS}
-        </div>
+        {!isPaid && (
+          <div className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${tone.chip}`}>
+            <Clock size={12}/> {remainingDays} ימים מתוך {totalDays}
+          </div>
+        )}
       </div>
 
-      <p className="text-sm font-medium text-foreground mb-3">{headline}</p>
+      <p className={`text-sm font-medium mb-3 ${tone.text || "text-foreground"}`}>{headline}</p>
 
       <div className="space-y-3">
         <div>
@@ -66,25 +107,40 @@ export function TrialProgress({ createdAt, setupRatio, nextTaskLabel, onJumpToNe
           </div>
           <Progress value={setupPct} className="h-2.5"/>
         </div>
-        <div>
-          <div className="flex justify-between text-[11px] font-bold text-muted-foreground mb-1">
-            <span>ניצול ימי ההרצה</span>
-            <span>{elapsedDays}/{TRIAL_DAYS} ימים</span>
+        {!isPaid && (
+          <div>
+            <div className="flex justify-between text-[11px] font-bold text-muted-foreground mb-1">
+              <span>ימי ניסיון שנוצלו</span>
+              <span>{elapsedDays}/{totalDays} ימים</span>
+            </div>
+            <Progress value={trialPct} className={`h-2.5 ${tone.bar}`}/>
           </div>
-          <Progress value={trialPct} className="h-2.5 opacity-70"/>
-        </div>
+        )}
       </div>
 
+      <div className="mt-4 flex flex-col sm:flex-row gap-2">
+      {!isPaid && (
+        <button
+          type="button"
+          onClick={goToBilling}
+          className={`inline-flex items-center justify-center gap-2 font-bold px-4 py-2.5 rounded-xl text-sm transition ${
+            remainingDays <= 5 ? "bg-foreground text-background hover:opacity-90" : "border-2 border-primary/40 text-primary hover:bg-primary/5"
+          }`}
+        >
+          הפעל מנוי
+        </button>
+      )}
       {!allDone && nextTaskLabel && (
         <button
           type="button"
           onClick={onJumpToNext}
-          className="mt-4 w-full sm:w-auto inline-flex items-center justify-between gap-2 bg-primary text-primary-foreground font-bold px-4 py-2.5 rounded-xl text-sm hover:opacity-90 transition"
+          className="w-full sm:w-auto inline-flex items-center justify-between gap-2 bg-primary text-primary-foreground font-bold px-4 py-2.5 rounded-xl text-sm hover:opacity-90 transition"
         >
           <span>המשימה הבאה: {nextTaskLabel}</span>
           <ArrowLeft size={16}/>
         </button>
       )}
+      </div>
     </div>
   );
 }

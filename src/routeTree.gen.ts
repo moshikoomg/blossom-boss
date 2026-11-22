@@ -23,6 +23,7 @@ import { Route as AccessibilityRouteImport } from './routes/accessibility'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TrackOrderIdRouteImport } from './routes/track.$orderId'
 import { Route as SuperAdminLandingRouteImport } from './routes/super-admin.landing'
+import { Route as SSlugRouteImport } from './routes/s.$slug'
 import { Route as ProductsProductIdRouteImport } from './routes/products.$productId'
 import { Route as PreviewStoreIdRouteImport } from './routes/preview.$storeId'
 import { Route as PaymentSuccessRouteImport } from './routes/payment.success'
@@ -104,6 +105,11 @@ const SuperAdminLandingRoute = SuperAdminLandingRouteImport.update({
   path: '/landing',
   getParentRoute: () => SuperAdminRoute,
 } as any)
+const SSlugRoute = SSlugRouteImport.update({
+  id: '/s/$slug',
+  path: '/s/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductsProductIdRoute = ProductsProductIdRouteImport.update({
   id: '/products/$productId',
   path: '/products/$productId',
@@ -172,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/payment/success': typeof PaymentSuccessRoute
   '/preview/$storeId': typeof PreviewStoreIdRoute
   '/products/$productId': typeof ProductsProductIdRoute
+  '/s/$slug': typeof SSlugRoute
   '/super-admin/landing': typeof SuperAdminLandingRoute
   '/track/$orderId': typeof TrackOrderIdRoute
   '/api/public/run-scrape': typeof ApiPublicRunScrapeRoute
@@ -198,6 +205,7 @@ export interface FileRoutesByTo {
   '/payment/success': typeof PaymentSuccessRoute
   '/preview/$storeId': typeof PreviewStoreIdRoute
   '/products/$productId': typeof ProductsProductIdRoute
+  '/s/$slug': typeof SSlugRoute
   '/super-admin/landing': typeof SuperAdminLandingRoute
   '/track/$orderId': typeof TrackOrderIdRoute
   '/api/public/run-scrape': typeof ApiPublicRunScrapeRoute
@@ -225,6 +233,7 @@ export interface FileRoutesById {
   '/payment/success': typeof PaymentSuccessRoute
   '/preview/$storeId': typeof PreviewStoreIdRoute
   '/products/$productId': typeof ProductsProductIdRoute
+  '/s/$slug': typeof SSlugRoute
   '/super-admin/landing': typeof SuperAdminLandingRoute
   '/track/$orderId': typeof TrackOrderIdRoute
   '/api/public/run-scrape': typeof ApiPublicRunScrapeRoute
@@ -253,6 +262,7 @@ export interface FileRouteTypes {
     | '/payment/success'
     | '/preview/$storeId'
     | '/products/$productId'
+    | '/s/$slug'
     | '/super-admin/landing'
     | '/track/$orderId'
     | '/api/public/run-scrape'
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/payment/success'
     | '/preview/$storeId'
     | '/products/$productId'
+    | '/s/$slug'
     | '/super-admin/landing'
     | '/track/$orderId'
     | '/api/public/run-scrape'
@@ -305,6 +316,7 @@ export interface FileRouteTypes {
     | '/payment/success'
     | '/preview/$storeId'
     | '/products/$productId'
+    | '/s/$slug'
     | '/super-admin/landing'
     | '/track/$orderId'
     | '/api/public/run-scrape'
@@ -332,6 +344,7 @@ export interface RootRouteChildren {
   PaymentSuccessRoute: typeof PaymentSuccessRoute
   PreviewStoreIdRoute: typeof PreviewStoreIdRoute
   ProductsProductIdRoute: typeof ProductsProductIdRoute
+  SSlugRoute: typeof SSlugRoute
   TrackOrderIdRoute: typeof TrackOrderIdRoute
   ApiPublicRunScrapeRoute: typeof ApiPublicRunScrapeRoute
   ApiPublicScanResultRoute: typeof ApiPublicScanResultRoute
@@ -441,6 +454,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuperAdminLandingRouteImport
       parentRoute: typeof SuperAdminRoute
     }
+    '/s/$slug': {
+      id: '/s/$slug'
+      path: '/s/$slug'
+      fullPath: '/s/$slug'
+      preLoaderRoute: typeof SSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/products/$productId': {
       id: '/products/$productId'
       path: '/products/$productId'
@@ -543,6 +563,7 @@ const rootRouteChildren: RootRouteChildren = {
   PaymentSuccessRoute: PaymentSuccessRoute,
   PreviewStoreIdRoute: PreviewStoreIdRoute,
   ProductsProductIdRoute: ProductsProductIdRoute,
+  SSlugRoute: SSlugRoute,
   TrackOrderIdRoute: TrackOrderIdRoute,
   ApiPublicRunScrapeRoute: ApiPublicRunScrapeRoute,
   ApiPublicScanResultRoute: ApiPublicScanResultRoute,

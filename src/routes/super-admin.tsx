@@ -8,6 +8,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { seedStoreCatalog } from "@/lib/seed-store.functions";
 import { backfillStoreFromTemplate } from "@/lib/backfill-store.functions";
 import { adminListStoresFull } from "@/lib/platform-admin.functions";
+import { PlanSettingsCard } from "@/components/PlanSettingsCard";
 
 type Store = {
   id: string;
@@ -132,6 +133,7 @@ function SuperAdminShell({ email }: { email: string }) {
       </header>
 
       <main className="max-w-6xl mx-auto p-4 space-y-4">
+        <PlanSettingsCard />
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-black">חנויות ({stores.length})</h2>

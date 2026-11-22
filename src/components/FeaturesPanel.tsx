@@ -7,6 +7,7 @@ import { toggleStoreFeature } from "@/lib/billing.functions";
 import { useStore } from "@/lib/store-context";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { MONTHLY_PRICE_ILS, VAT_RATE } from "@/lib/plans";
 
 const CATEGORY_LABEL: Record<string, string> = {
   plan: "מסלולים",
@@ -23,7 +24,7 @@ const PLAN_LABEL: Record<string, string> = {
 
 const PLAN_PRICE: Record<string, number> = {
   free: 0,
-  pro: 149,
+  pro: MONTHLY_PRICE_ILS,
   enterprise: 499,
   trial: 0,
 };
@@ -131,7 +132,7 @@ export function FeaturesPanel() {
   const activeAddons = features.filter((f) => f.enabled && f.category !== "plan");
   const addonsSum = activeAddons.reduce((s, f) => s + Number(f.monthly_price || 0), 0);
   const subtotal = planPrice + addonsSum;
-  const vat = Math.round(subtotal * 0.17 * 100) / 100;
+  const vat = Math.round(subtotal * VAT_RATE * 100) / 100;
   const total = Math.round((subtotal + vat) * 100) / 100;
 
   return (

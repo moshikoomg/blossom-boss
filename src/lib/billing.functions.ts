@@ -3,7 +3,10 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const PLAN_PRICE: Record<string, number> = { free: 0, trial: 0, pro: 149, enterprise: 499 };
+import { VAT_RATE } from "./plans";
+import { getPlanSettings } from "./plan-settings.server";
+
+const PLAN_PRICE: Record<string, number> = { free: 0, trial: 0, enterprise: 499 };
 const PLAN_NAME: Record<string, string> = { free: "Free", trial: "ניסיון", pro: "Pro", enterprise: "Enterprise" };
 
 async function assertAdmin(userId: string) {
@@ -50,9 +53,9 @@ async function buildBreakdown(storeId: string): Promise<BillingBreakdown> {
     })
     .filter(Boolean) as BillingBreakdown["addons"];
   const planKey = sub.data?.plan_key || "free";
-  const planPrice = PLAN_PRICE[planKey] ?? 0;
+  const planPrice = planKey === "pro" ? (await getPlanSettings()).monthly_price_ils : PLAN_PRICE[planKey] ?? 0;
   const subtotal = planPrice + addons.reduce((s, a) => s + a.price, 0);
-  const vat = Math.round(subtotal * 0.17 * 100) / 100;
+  const vat = Math.round(subtotal * VAT_RATE * 100) / 100;
   return {
     storeId,
     storeName: store.data?.name || "—",

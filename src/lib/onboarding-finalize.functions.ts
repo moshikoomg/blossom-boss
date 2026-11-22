@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { cloneTemplateCatalog } from "./store-create.functions";
+import { createLatinSlug } from "./store-slug";
+import { getPlanSettings, trialEndsFromNow } from "./plan-settings.server";
 
 const PaletteSchema = z
   .object({
@@ -17,14 +19,9 @@ const InputSchema = z.object({
   palette_override: PaletteSchema.optional(),
 });
 
+// Store links must be Latin-only (/s/<slug>): Hebrew names are transliterated.
 function slugify(name: string) {
-  const base = name
-    .toLowerCase()
-    .trim()
-    .replace(/[^\p{L}\p{N}]+/gu, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
-  return base || "store";
+  return createLatinSlug(name);
 }
 
 function toNumberPrice(v: unknown): number {
@@ -171,7 +168,7 @@ export const finalizeScanIntoStore = createServerFn({ method: "POST" })
       .maybeSingle();
 
     // 6. Trial subscription
-    const trialEnds = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+    const trialEnds = trialEndsFromNow((await getPlanSettings()).trial_days);
     await supabaseAdmin.from("store_subscriptions").insert({
       store_id: store.id,
       plan_key: "pro",

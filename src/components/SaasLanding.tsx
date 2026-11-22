@@ -40,6 +40,9 @@ import {
   shouldUsePublishedOAuth,
 } from "@/lib/oauth-flow";
 import { useLandingContent } from "@/lib/landing-content";
+import { useServerFn } from "@tanstack/react-start";
+import { getPublicPlanSettings } from "@/lib/plan-settings.functions";
+import { TRIAL_DAYS, MONTHLY_PRICE_ILS } from "@/lib/plans";
 
 // Icon mapping for content-driven feature blocks.
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
@@ -105,6 +108,11 @@ interface SaasLandingProps {
 
 export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
   const [dialogOpen, setDialogOpen] = useState<boolean>(!!autoOpen);
+  const planFn = useServerFn(getPublicPlanSettings);
+  const [plan, setPlan] = useState({ trial_days: TRIAL_DAYS, monthly_price_ils: MONTHLY_PRICE_ILS });
+  useEffect(() => {
+    planFn().then((p) => setPlan({ trial_days: p.trial_days, monthly_price_ils: p.monthly_price_ils })).catch(() => {});
+  }, [planFn]);
   const [hasSession, setHasSession] = useState<boolean | null>(null);
   const [hasStore, setHasStore] = useState<boolean>(false);
   const [signingIn, setSigningIn] = useState(false);
@@ -550,40 +558,26 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
       <section id="pricing" className="py-24">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight">תוכניות פשוטות. בלי הפתעות.</h2>
-            <p className="text-muted-foreground mt-3">מתחילים חינם. משדרגים כשמתחילים למכור.</p>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight">מחיר אחד. בלי הפתעות.</h2>
+            <p className="text-muted-foreground mt-3">{plan.trial_days} יום ניסיון חינם, בלי כרטיס אשראי. ממשיכים רק אם זה עובד לכם.</p>
           </div>
-          <div className="grid md:grid-cols-2 gap-5 max-w-3xl mx-auto">
-            <div className="p-7 rounded-3xl border border-border bg-card">
-              <div className="text-xs font-bold text-muted-foreground tracking-wider mb-1">סטארטר</div>
-              <div className="flex items-end gap-1 mb-1">
-                <div className="text-5xl font-black">חינם</div>
-              </div>
-              <div className="text-sm text-muted-foreground mb-5">לחנות אחת · עד 30 מוצרים</div>
-              <ul className="space-y-2 text-sm mb-6">
-                <li className="flex gap-2 items-center"><Check size={16} className="text-primary" /> חנות אמיתית עם דומיין</li>
-                <li className="flex gap-2 items-center"><Check size={16} className="text-primary" /> הזמנות לוואטסאפ</li>
-                <li className="flex gap-2 items-center"><Check size={16} className="text-primary" /> Bit ואשראי</li>
-              </ul>
-              <button onClick={openDialog} className="w-full h-12 rounded-xl border-2 border-foreground/15 font-bold hover:bg-foreground/5 transition">
-                התחל חינם
-              </button>
-            </div>
+          <div className="max-w-md mx-auto">
             <div className="relative p-7 rounded-3xl bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-2xl shadow-primary/30">
-              <div className="absolute -top-3 right-6 px-3 h-7 rounded-full bg-foreground text-background text-[11px] font-black grid place-items-center">פופולרי</div>
-              <div className="text-xs font-bold opacity-80 tracking-wider mb-1">פרו</div>
+              <div className="absolute -top-3 right-6 px-3 h-7 rounded-full bg-foreground text-background text-[11px] font-black grid place-items-center">{plan.trial_days} יום חינם</div>
+              <div className="text-xs font-bold opacity-80 tracking-wider mb-1">הכל כלול</div>
               <div className="flex items-end gap-1 mb-1">
-                <div className="text-5xl font-black">₪99</div>
-                <div className="text-sm opacity-80 mb-1.5">/חודש</div>
+                <div className="text-5xl font-black">₪{plan.monthly_price_ils}</div>
+                <div className="text-sm opacity-80 mb-1.5">/חודש + מע״מ</div>
               </div>
-              <div className="text-sm opacity-80 mb-5">מוצרים ללא הגבלה · AI · קופונים</div>
+              <div className="text-sm opacity-80 mb-5">חנות מלאה · מוכר AI · קופונים · ביטול בכל רגע</div>
               <ul className="space-y-2 text-sm mb-6">
-                <li className="flex gap-2 items-center"><Check size={16} /> כל מה שיש בסטארטר</li>
+                <li className="flex gap-2 items-center"><Check size={16} /> קישור אישי לחנות שלכם</li>
+                <li className="flex gap-2 items-center"><Check size={16} /> הזמנות לוואטסאפ, Bit ואשראי</li>
                 <li className="flex gap-2 items-center"><Check size={16} /> מוכר AI אוטומטי</li>
                 <li className="flex gap-2 items-center"><Check size={16} /> קופונים · באנדלים · אנליטיקס</li>
               </ul>
               <button onClick={openDialog} className="w-full h-12 rounded-xl bg-foreground text-background font-bold hover:scale-[1.02] transition">
-                התחל ניסיון
+                מתחילים {plan.trial_days} יום חינם
               </button>
             </div>
           </div>
