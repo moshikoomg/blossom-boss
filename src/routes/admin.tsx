@@ -17,7 +17,7 @@ import {
   LayoutDashboard, ClipboardList, Package, FolderTree, Plus as PlusIcon, Users,
   TrendingUp, Bell, Send, Settings as SettingsIcon, LogOut, ArrowUp, ArrowDown,
   Search, Calendar, ChevronLeft, Eye, Mail, Phone, MapPin, Trash2, Pencil, X, Check,
-  Clock, Truck, FileText,
+  Clock, Truck, FileText, Sun,
 } from "lucide-react";
 import { LegalEditor } from "@/components/LegalEditor";
 import { ThemeColorEditor } from "@/components/ThemeColorEditor";
@@ -29,6 +29,8 @@ import { TrialProgress } from "@/components/TrialProgress";
 import { QuotaUsagePanel } from "@/components/QuotaUsagePanel";
 import { SetupWizard, useSetupSnapshot, setupRatioFromState } from "@/components/SetupWizard";
 import { CriticalSetupMeter } from "@/components/CriticalSetupMeter";
+import { TodaySection } from "@/components/admin/TodaySection";
+import { SuppliersSection } from "@/components/admin/SuppliersSection";
 import { celebrate } from "@/lib/celebrate";
 import {
   awaitSafeSession,
@@ -52,23 +54,34 @@ export const Route = createFileRoute("/admin")({
 });
 
 type Section =
-  | "dashboard" | "orders" | "products" | "categories" | "addons"
+  | "today" | "reports" | "orders" | "products" | "categories" | "addons" | "suppliers"
   | "users" | "pricing" | "hero" | "popups" | "broadcasts" | "settings" | "legal";
 
+// Grouped by a florist's day: today's work first, then the shop, buying,
+// marketing and settings. Old links to ?section=dashboard land on "today".
 const NAV: { id: Section; label: string; icon: typeof LayoutDashboard; group: string }[] = [
-  { id: "dashboard", label: "סקירה כללית", icon: LayoutDashboard, group: "ראשי" },
-  { id: "orders", label: "הזמנות", icon: ClipboardList, group: "ראשי" },
-  { id: "products", label: "מוצרים", icon: Package, group: "קטלוג" },
-  { id: "categories", label: "קטגוריות", icon: FolderTree, group: "קטלוג" },
-  { id: "addons", label: "תוספות", icon: PlusIcon, group: "קטלוג" },
-  { id: "pricing", label: "תמחור דינמי", icon: TrendingUp, group: "קטלוג" },
-  { id: "users", label: "משתמשים", icon: Users, group: "אנשים" },
-  { id: "hero", label: "באנרים בעמוד הבית", icon: TrendingUp, group: "שיווק" },
-  { id: "popups", label: "פופ-אפים", icon: Bell, group: "שיווק" },
-  { id: "broadcasts", label: "הודעות לכולם", icon: Send, group: "שיווק" },
-  { id: "settings", label: "הגדרות אתר", icon: SettingsIcon, group: "מערכת" },
-  { id: "legal", label: "תקנון ופרטיות", icon: FileText, group: "מערכת" },
+  { id: "today", label: "היום שלי", icon: Sun, group: "עבודה שוטפת" },
+  { id: "orders", label: "הזמנות", icon: ClipboardList, group: "עבודה שוטפת" },
+  { id: "suppliers", label: "ספקים ורכש", icon: Truck, group: "עבודה שוטפת" },
+  { id: "products", label: "מוצרים וזרים", icon: Package, group: "החנות שלי" },
+  { id: "categories", label: "קטגוריות", icon: FolderTree, group: "החנות שלי" },
+  { id: "addons", label: "תוספות (כרטיס, שוקולד…)", icon: PlusIcon, group: "החנות שלי" },
+  { id: "pricing", label: "מחירים לפי עונה", icon: TrendingUp, group: "החנות שלי" },
+  { id: "hero", label: "באנרים בעמוד הבית", icon: ImageIcon, group: "שיווק" },
+  { id: "popups", label: "חלונות מבצע", icon: Bell, group: "שיווק" },
+  { id: "broadcasts", label: "הודעות ללקוחות", icon: Send, group: "שיווק" },
+  { id: "reports", label: "דוחות ומכירות", icon: LayoutDashboard, group: "נתונים" },
+  { id: "settings", label: "פרטי העסק ומשלוחים", icon: SettingsIcon, group: "הגדרות" },
+  { id: "users", label: "צוות והרשאות", icon: Users, group: "הגדרות" },
+  { id: "legal", label: "תקנון ופרטיות", icon: FileText, group: "הגדרות" },
 ];
+const ALL_SECTIONS = NAV.map((n) => n.id) as Section[];
+const MOBILE_TABS: Section[] = ["today", "orders", "suppliers", "products", "settings"];
+function normalizeSection(id: string | null | undefined): Section | null {
+  if (!id) return null;
+  if (id === "dashboard") return "today";
+  return (ALL_SECTIONS as string[]).includes(id) ? (id as Section) : null;
+}
 
 type MyStore = { store_id: string; role: string; name: string; slug: string | null };
 
@@ -415,28 +428,23 @@ function OnboardedWelcomeModal({
 }
 
 function AdminShell({ email, isPlatformAdmin = false }: { email: string; isPlatformAdmin?: boolean }) {
-  const [section, setSection] = useState<Section>(() => {
-    if (typeof window === "undefined") return "dashboard";
+  const [section, setSectionState] = useState<Section>(() => {
+    if (typeof window === "undefined") return "today";
     try {
-      const s = new URL(window.location.href).searchParams.get("section");
-      const allowed: Section[] = [
-        "dashboard","orders","products","categories","addons","users",
-        "pricing","hero","popups","broadcasts","settings","legal",
-      ];
-      if (s && (allowed as string[]).includes(s)) return s as Section;
+      return normalizeSection(new URL(window.location.href).searchParams.get("section")) ?? "today";
     } catch {}
-    return "dashboard";
+    return "today";
   });
+  const setSection = (id: Section) => {
+    setSectionState(id);
+    window.scrollTo({ top: 0 });
+  };
   // Allow internal components (e.g. SetupWizard "open payments" CTA) to
   // navigate between admin sections without going through the URL.
   useEffect(() => {
     const handler = (e: Event) => {
-      const id = (e as CustomEvent<string>).detail;
-      const allowed: Section[] = [
-        "dashboard","orders","products","categories","addons","users",
-        "pricing","hero","popups","broadcasts","settings","legal",
-      ];
-      if (id && (allowed as string[]).includes(id)) setSection(id as Section);
+      const id = normalizeSection((e as CustomEvent<string>).detail);
+      if (id) { setSectionState(id); window.scrollTo({ top: 0 }); }
     };
     window.addEventListener("tmm:admin-goto-section", handler);
     return () => window.removeEventListener("tmm:admin-goto-section", handler);
@@ -529,7 +537,7 @@ function AdminShell({ email, isPlatformAdmin = false }: { email: string; isPlatf
             <button onClick={logout} className="p-2 rounded-lg text-destructive hover:bg-destructive/10" aria-label="התנתק"><LogOut size={18}/></button>
           </div>
           <div className="flex items-center gap-1 px-2 pb-2 overflow-x-auto no-scrollbar">
-            {NAV.filter(n => ["dashboard","orders","products","popups","settings"].includes(n.id)).map((n) => {
+            {MOBILE_TABS.map((id) => NAV.find((n) => n.id === id)!).map((n) => {
               const I = n.icon;
               const active = section === n.id;
               return (
@@ -537,7 +545,7 @@ function AdminShell({ email, isPlatformAdmin = false }: { email: string; isPlatf
                   className={`shrink-0 flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-[10px] font-bold transition ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
                   aria-label={n.label}>
                   <I size={18}/>
-                  <span>{n.label.split(" ")[0]}</span>
+                  <span>{n.id === "today" ? "היום" : n.label.split(" ")[0]}</span>
                 </button>
               );
             })}
@@ -548,7 +556,9 @@ function AdminShell({ email, isPlatformAdmin = false }: { email: string; isPlatf
             <PlatformPanel onImpersonate={(id) => setImpersonatedId(id)} />
           ) : (
             <>
-          {section === "dashboard" && <DashboardSection/>}
+          {section === "today" && <TodaySection/>}
+          {section === "reports" && <DashboardSection/>}
+          {section === "suppliers" && <SuppliersSection/>}
           {section === "orders" && <OrdersSection/>}
           {section === "products" && <ProductsSection/>}
           {section === "categories" && <CategoriesSection/>}
@@ -1006,21 +1016,15 @@ function DashboardSection() {
   const storeId = activeStore?.id ?? null;
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
-  const [createdAt, setCreatedAt] = useState<string | null>(null);
-  const setup = useSetupSnapshot();
-  const jumpRef = useRef<(() => void) | null>(null);
-  const wizardCardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!storeId) return;
     (async () => {
-      const [{ data: o }, { data: p }, { data: s }] = await Promise.all([
+      const [{ data: o }, { data: p }] = await Promise.all([
         supabase.from("orders").select("*").eq("store_id", storeId).is("deleted_at", null).order("created_at", { ascending: false }).limit(500),
         supabase.from("products").select("id,name").eq("store_id", storeId).limit(200),
-        supabase.from("stores").select("created_at").eq("id", storeId).maybeSingle(),
       ]);
       setOrders(o || []); setProducts(p || []);
-      setCreatedAt((s as any)?.created_at ?? null);
     })();
   }, [storeId]);
 
@@ -1055,56 +1059,7 @@ function DashboardSection() {
 
   return (
     <>
-      <SectionHeader title="סקירה כללית" subtitle="מה קורה בחנות שלך עכשיו"/>
-      <SubscriptionBanner />
-      <div className="mb-4">
-        <StoreLinkCard />
-      </div>
-      <div className="mb-4">
-        <TrialProgress
-          createdAt={createdAt}
-          setupRatio={setupRatioFromState(setup.snap)}
-          nextTaskLabel={(() => {
-            const ratio = setupRatioFromState(setup.snap);
-            if (ratio >= 1) return null;
-            const labels = ["פרופיל העסק", "שעות ומיקום", "אזורי משלוח", "חיבור סליקה"];
-            const ids: Array<"profile"|"hours"|"shipping"|"payment"> = ["profile","hours","shipping","payment"];
-            const checks = [
-              !!(setup.snap.store_name.trim() && (setup.snap.store_phone.trim() || setup.snap.whatsapp_business.trim())),
-              !!setup.snap.store_address.trim() && Object.values(setup.snap.hours).some((h) => !h.closed),
-              setup.snap.zones.some((z) => z.area.trim()),
-              setup.snap.hasBilling,
-            ];
-            const idx = checks.findIndex((c) => !c);
-            void ids;
-            return idx === -1 ? null : labels[idx];
-          })()}
-          onJumpToNext={() => {
-            jumpRef.current?.();
-            wizardCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}
-        />
-      </div>
-      {storeId && (
-        <div className="mb-4">
-          <QuotaUsagePanel storeId={storeId}/>
-        </div>
-      )}
-      <div className="mb-4">
-        <CriticalSetupMeter />
-      </div>
-      <div ref={wizardCardRef} className="mb-4">
-        <SetupWizard
-          snap={setup.snap}
-          setSnap={setup.setSnap}
-          reload={setup.reload}
-          onAllDone={() => celebrate({ intense: true })}
-          registerJump={(fn) => { jumpRef.current = fn; }}
-        />
-      </div>
-      <div className="mb-4">
-        <PlanOverviewCard />
-      </div>
+      <SectionHeader title="דוחות ומכירות" subtitle="איך החנות מתפקדת לאורך זמן"/>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         <StatCard label="הזמנות היום" value={todayOrders.length} hint={cancelledToday ? `${cancelledToday} בוטלו` : undefined}/>
         <StatCard label="הכנסות היום" value={`₪${todayRev.toLocaleString()}`} hint="לא כולל ביטולים"/>
