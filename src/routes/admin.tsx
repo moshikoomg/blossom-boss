@@ -21,17 +21,12 @@ import {
 } from "lucide-react";
 import { LegalEditor } from "@/components/LegalEditor";
 import { ThemeColorEditor } from "@/components/ThemeColorEditor";
-import { FeaturesPanel, PlanOverviewCard } from "@/components/FeaturesPanel";
+import { FeaturesPanel } from "@/components/FeaturesPanel";
 import { StoreLinkCard } from "@/components/StoreLinkCard";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
-import { OnboardingCoach, SetupShortcutButton } from "@/components/OnboardingCoach";
-import { TrialProgress } from "@/components/TrialProgress";
 import { QuotaUsagePanel } from "@/components/QuotaUsagePanel";
-import { SetupWizard, useSetupSnapshot, setupRatioFromState } from "@/components/SetupWizard";
-import { CriticalSetupMeter } from "@/components/CriticalSetupMeter";
 import { TodaySection } from "@/components/admin/TodaySection";
 import { SuppliersSection } from "@/components/admin/SuppliersSection";
-import { celebrate } from "@/lib/celebrate";
 import {
   awaitSafeSession,
   clearOAuthStart,
@@ -55,28 +50,31 @@ export const Route = createFileRoute("/admin")({
 
 type Section =
   | "today" | "reports" | "orders" | "products" | "categories" | "addons" | "suppliers"
-  | "users" | "pricing" | "hero" | "popups" | "broadcasts" | "settings" | "legal";
+  | "users" | "pricing" | "hero" | "popups" | "broadcasts" | "settings" | "delivery" | "design" | "plan" | "legal";
 
-// Grouped by a florist's day: today's work first, then the shop, buying,
-// marketing and settings. Old links to ?section=dashboard land on "today".
-const NAV: { id: Section; label: string; icon: typeof LayoutDashboard; group: string }[] = [
-  { id: "today", label: "היום שלי", icon: Sun, group: "עבודה שוטפת" },
-  { id: "orders", label: "הזמנות", icon: ClipboardList, group: "עבודה שוטפת" },
-  { id: "suppliers", label: "ספקים ורכש", icon: Truck, group: "עבודה שוטפת" },
-  { id: "products", label: "מוצרים וזרים", icon: Package, group: "החנות שלי" },
-  { id: "categories", label: "קטגוריות", icon: FolderTree, group: "החנות שלי" },
-  { id: "addons", label: "תוספות (כרטיס, שוקולד…)", icon: PlusIcon, group: "החנות שלי" },
-  { id: "pricing", label: "מחירים לפי עונה", icon: TrendingUp, group: "החנות שלי" },
-  { id: "hero", label: "באנרים בעמוד הבית", icon: ImageIcon, group: "שיווק" },
-  { id: "popups", label: "חלונות מבצע", icon: Bell, group: "שיווק" },
-  { id: "broadcasts", label: "הודעות ללקוחות", icon: Send, group: "שיווק" },
-  { id: "reports", label: "דוחות ומכירות", icon: LayoutDashboard, group: "נתונים" },
-  { id: "settings", label: "פרטי העסק ומשלוחים", icon: SettingsIcon, group: "הגדרות" },
-  { id: "users", label: "צוות והרשאות", icon: Users, group: "הגדרות" },
-  { id: "legal", label: "תקנון ופרטיות", icon: FileText, group: "הגדרות" },
+// Seven places only. Pages that belong together are tabs inside one place,
+// so the menu stays short. Old links to ?section=dashboard land on "today".
+type Area = { id: string; label: string; icon: typeof LayoutDashboard; tabs: { id: Section; label: string }[] };
+const AREAS: Area[] = [
+  { id: "today", label: "היום", icon: Sun, tabs: [{ id: "today", label: "היום" }] },
+  { id: "orders", label: "הזמנות", icon: ClipboardList, tabs: [{ id: "orders", label: "הזמנות" }] },
+  { id: "catalog", label: "מוצרים", icon: Package, tabs: [
+    { id: "products", label: "מוצרים" }, { id: "categories", label: "קטגוריות" },
+    { id: "addons", label: "תוספות" }, { id: "pricing", label: "מחירי עונה" },
+  ] },
+  { id: "suppliers", label: "ספקים", icon: Truck, tabs: [{ id: "suppliers", label: "ספקים" }] },
+  { id: "marketing", label: "שיווק", icon: Send, tabs: [
+    { id: "hero", label: "באנרים" }, { id: "popups", label: "חלונות מבצע" }, { id: "broadcasts", label: "הודעות" },
+  ] },
+  { id: "reports", label: "דוחות", icon: LayoutDashboard, tabs: [{ id: "reports", label: "דוחות" }] },
+  { id: "settings", label: "הגדרות", icon: SettingsIcon, tabs: [
+    { id: "settings", label: "פרטי העסק" }, { id: "delivery", label: "משלוחים ושעות" }, { id: "design", label: "עיצוב" },
+    { id: "users", label: "צוות" }, { id: "plan", label: "מנוי" }, { id: "legal", label: "תקנון" },
+  ] },
 ];
-const ALL_SECTIONS = NAV.map((n) => n.id) as Section[];
-const MOBILE_TABS: Section[] = ["today", "orders", "suppliers", "products", "settings"];
+const ALL_SECTIONS = AREAS.flatMap((a) => a.tabs.map((t) => t.id));
+const areaOf = (s: Section) => AREAS.find((a) => a.tabs.some((t) => t.id === s)) ?? AREAS[0];
+const MOBILE_AREAS = ["today", "orders", "catalog", "suppliers"];
 function normalizeSection(id: string | null | undefined): Section | null {
   if (!id) return null;
   if (id === "dashboard") return "today";
@@ -465,116 +463,123 @@ function AdminShell({ email, isPlatformAdmin = false }: { email: string; isPlatf
     qc.invalidateQueries();
   }, [impersonatedId, qc]);
 
-  const groups = useMemo(() => {
-    const m = new Map<string, typeof NAV>();
-    for (const n of NAV) { if (!m.has(n.group)) m.set(n.group, []); m.get(n.group)!.push(n); }
-    return [...m.entries()];
-  }, []);
+  const area = areaOf(section);
+  const { store: shellStore } = useStore();
+
+  const navButton = (a: Area, compact = false) => {
+    const I = a.icon;
+    const active = area.id === a.id;
+    return (
+      <button key={a.id} onClick={() => { setSection(a.tabs[0].id); setMobileOpen(false); }}
+        aria-current={active ? "page" : undefined}
+        className={compact
+          ? `flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold ${active ? "text-primary" : "text-muted-foreground"}`
+          : `w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] font-semibold transition ${active ? "bg-primary/10 text-primary" : "text-foreground/80 hover:bg-muted"}`}>
+        <I size={compact ? 20 : 18} aria-hidden /> {a.label}
+      </button>
+    );
+  };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-muted/30 flex">
-      {/* Sidebar */}
+    <div dir="rtl" className="min-h-screen bg-background flex">
       {mobileOpen && (
-        <button
-          aria-label="סגור תפריט"
-          onClick={() => setMobileOpen(false)}
-          className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-30"
-        />
+        <button aria-label="סגור תפריט" onClick={() => setMobileOpen(false)} className="md:hidden fixed inset-0 bg-black/40 z-30" />
       )}
-      <aside className={`fixed md:sticky top-0 right-0 h-screen w-[86vw] max-w-xs md:w-72 bg-card border-l border-border z-40 transition-transform ${mobileOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}`}>
-        <div className="p-5 border-b border-border flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-black">🌸</div>
+      <aside className={`fixed md:sticky top-0 right-0 h-screen w-64 bg-card border-l border-border z-40 flex flex-col transition-transform ${mobileOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}`}>
+        <div className="px-5 py-5 flex items-center gap-3">
+          <span className="text-2xl" aria-hidden>🌸</span>
           <div className="min-w-0 flex-1">
-            <p className="font-black text-base">ניהול החנות</p>
-            <p className="text-[11px] text-muted-foreground truncate">{email}</p>
+            <p className="font-black truncate">{shellStore?.name || "החנות שלי"}</p>
+            <p className="text-xs text-muted-foreground truncate">{email}</p>
           </div>
           <button onClick={() => setMobileOpen(false)} className="md:hidden text-muted-foreground p-1" aria-label="סגור"><X size={20}/></button>
         </div>
-        <nav className="p-3 space-y-4 overflow-y-auto h-[calc(100vh-180px)]">
-          {groups.map(([g, items]) => (
-            <div key={g}>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground px-3 mb-1.5 font-bold">{g}</p>
-              <div className="space-y-0.5">
-                {items.map((n) => {
-                  const I = n.icon;
-                  const active = section === n.id;
-                  return (
-                    <button key={n.id} onClick={() => { setSection(n.id); setMobileOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${active ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground hover:bg-muted"}`}>
-                      <I size={16}/> {n.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+        <nav className="px-3 space-y-1 flex-1 overflow-y-auto" aria-label="ניווט ראשי">
+          {AREAS.map((a) => navButton(a))}
         </nav>
-        <div className="absolute bottom-0 inset-x-0 p-3 border-t border-border bg-card space-y-1">
-          <Link to="/" className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm hover:bg-muted">
-            <ChevronLeft size={16}/> חזרה לחנות
-          </Link>
-          <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-destructive hover:bg-destructive/10">
-            <LogOut size={16}/> התנתק
+        <div className="p-3 border-t border-border space-y-1">
+          <a href="/" target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-muted">
+            <Eye size={16} aria-hidden/> צפייה בחנות
+          </a>
+          <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-muted">
+            <LogOut size={16} aria-hidden/> התנתקות
           </button>
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0">
-        <OnboardingCoach />
-        <SetupShortcutButton />
+      <main className="flex-1 min-w-0 pb-20 md:pb-0">
         {isPlatformAdmin && (
-          <SuperAdminBar
-            impersonatedId={impersonatedId}
-            onImpersonate={(id) => setImpersonatedId(id)}
-          />
+          <SuperAdminBar impersonatedId={impersonatedId} onImpersonate={(id) => setImpersonatedId(id)} />
         )}
-        <header className="md:hidden sticky top-0 bg-card border-b border-border z-30">
-          <div className="px-3 py-2.5 flex items-center justify-between gap-2">
-            <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-muted" aria-label="פתח תפריט">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-            </button>
-            <p className="font-black text-sm truncate">{NAV.find((n) => n.id === section)?.label}</p>
-            <button onClick={logout} className="p-2 rounded-lg text-destructive hover:bg-destructive/10" aria-label="התנתק"><LogOut size={18}/></button>
-          </div>
-          <div className="flex items-center gap-1 px-2 pb-2 overflow-x-auto no-scrollbar">
-            {MOBILE_TABS.map((id) => NAV.find((n) => n.id === id)!).map((n) => {
-              const I = n.icon;
-              const active = section === n.id;
-              return (
-                <button key={n.id} onClick={() => setSection(n.id)}
-                  className={`shrink-0 flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-[10px] font-bold transition ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-                  aria-label={n.label}>
-                  <I size={18}/>
-                  <span>{n.id === "today" ? "היום" : n.label.split(" ")[0]}</span>
-                </button>
-              );
-            })}
-          </div>
+        <header className="md:hidden sticky top-0 bg-card/95 backdrop-blur border-b border-border z-20 px-3 h-14 flex items-center justify-between">
+          <p className="font-black">{area.label}</p>
+          <button onClick={() => setMobileOpen(true)} className="p-2 -ml-2 rounded-lg hover:bg-muted" aria-label="פתח תפריט">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+          </button>
         </header>
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
+        <div className="px-4 py-5 md:px-10 md:py-8 max-w-5xl mx-auto">
           {isPlatformAdmin && !impersonatedId ? (
             <PlatformPanel onImpersonate={(id) => setImpersonatedId(id)} />
           ) : (
             <>
-          {section === "today" && <TodaySection/>}
-          {section === "reports" && <DashboardSection/>}
-          {section === "suppliers" && <SuppliersSection/>}
-          {section === "orders" && <OrdersSection/>}
-          {section === "products" && <ProductsSection/>}
-          {section === "categories" && <CategoriesSection/>}
-          {section === "addons" && <AddonsSection/>}
-          {section === "users" && <UsersSection/>}
-          {section === "pricing" && <PricingSection/>}
-          {section === "hero" && <HeroSlidesSection/>}
-          {section === "popups" && <PopupsSection/>}
-          {section === "broadcasts" && <BroadcastsSection/>}
-          {section === "settings" && <SettingsSection/>}
-          {section === "legal" && <LegalSection/>}
+              {area.tabs.length > 1 && (
+                <div role="tablist" aria-label={area.label} className="flex gap-1 border-b border-border mb-6 overflow-x-auto no-scrollbar">
+                  {area.tabs.map((t) => (
+                    <button key={t.id} role="tab" aria-selected={section === t.id} onClick={() => setSection(t.id)}
+                      className={`shrink-0 px-4 py-2.5 text-sm font-bold border-b-2 -mb-px transition ${section === t.id ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {section === "today" && <TodaySection/>}
+              {section === "reports" && <DashboardSection/>}
+              {section === "suppliers" && <SuppliersSection/>}
+              {section === "orders" && <OrdersSection/>}
+              {section === "products" && <ProductsSection/>}
+              {section === "categories" && <CategoriesSection/>}
+              {section === "addons" && <AddonsSection/>}
+              {section === "users" && <UsersSection/>}
+              {section === "pricing" && <PricingSection/>}
+              {section === "hero" && <HeroSlidesSection/>}
+              {section === "popups" && <PopupsSection/>}
+              {section === "broadcasts" && <BroadcastsSection/>}
+              {section === "settings" && <SettingsHome/>}
+              {section === "delivery" && <SettingsSection part="delivery"/>}
+              {section === "design" && <SettingsSection part="design"/>}
+              {section === "plan" && <PlanHome/>}
+              {section === "legal" && <LegalSection/>}
             </>
           )}
         </div>
       </main>
-      <LivePreview />
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-card border-t border-border flex pb-[env(safe-area-inset-bottom)]" aria-label="ניווט מהיר">
+        {AREAS.filter((a) => MOBILE_AREAS.includes(a.id)).map((a) => navButton(a, true))}
+        <button onClick={() => setMobileOpen(true)} className="flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold text-muted-foreground">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+          עוד
+        </button>
+      </nav>
+    </div>
+  );
+}
+
+/** Business details: the shop link first, then the details shoppers see. */
+function SettingsHome() {
+  return (
+    <div className="space-y-6 max-w-3xl">
+      <StoreLinkCard />
+      <SettingsSection part="business"/>
+    </div>
+  );
+}
+
+function PlanHome() {
+  const { store } = useStore();
+  return (
+    <div className="space-y-6 max-w-3xl">
+      <FeaturesPanel />
+      {store?.id && <QuotaUsagePanel storeId={store.id}/>}
     </div>
   );
 }
@@ -878,113 +883,6 @@ function PlatformStoreEditor({ store, onClose, onSaved }: { store: StoreLite; on
 }
 
 /* ============ Live Preview ============ */
-function LivePreview() {
-  const [open, setOpen] = useState<boolean>(false);
-  const [docked, setDocked] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("admin_preview_docked") !== "0";
-  });
-  const [nonce, setNonce] = useState(0);
-  const [pos, setPos] = useState<{ x: number; y: number }>(() => {
-    if (typeof window === "undefined") return { x: 24, y: 80 };
-    try {
-      const s = localStorage.getItem("admin_preview_pos");
-      if (s) return JSON.parse(s);
-    } catch {}
-    return { x: 24, y: 80 };
-  });
-  const panelRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => { localStorage.setItem("admin_preview_docked", docked ? "1" : "0"); }, [docked]);
-  useEffect(() => { localStorage.setItem("admin_preview_pos", JSON.stringify(pos)); }, [pos]);
-
-  // Auto-close: ESC key + click outside the panel
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    const onDown = (e: MouseEvent) => {
-      const el = panelRef.current;
-      if (el && !el.contains(e.target as Node)) setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("mousedown", onDown);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("mousedown", onDown);
-    };
-  }, [open]);
-
-  const startDrag = (e: React.MouseEvent) => {
-    if (docked) return;
-    const startX = e.clientX, startY = e.clientY;
-    const orig = { ...pos };
-    const onMove = (ev: MouseEvent) => {
-      setPos({
-        x: Math.max(0, orig.x - (ev.clientX - startX)),
-        y: Math.max(0, orig.y + (ev.clientY - startY)),
-      });
-    };
-    const onUp = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  };
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="hidden md:inline-flex fixed bottom-14 left-4 z-40 bg-card border border-border text-foreground rounded-full shadow-md w-9 h-9 items-center justify-center hover:bg-muted transition"
-        title="תצוגה מקדימה של החנות"
-        aria-label="תצוגה מקדימה"
-      >
-        <Monitor size={15}/>
-      </button>
-    );
-  }
-
-  const style: React.CSSProperties = docked
-    ? { left: 0, top: 0, height: "100vh", width: 380 }
-    : { left: pos.x, top: pos.y, height: 600, width: 360 };
-
-  return (
-    <div
-      ref={panelRef}
-      className="fixed z-50 bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-      style={style}
-    >
-      <div
-        onMouseDown={startDrag}
-        className={`flex items-center justify-between px-3 py-2 border-b border-border bg-muted/50 ${docked ? "" : "cursor-move"}`}
-      >
-        <div className="flex items-center gap-2 text-xs font-bold">
-          {!docked && <Move size={12} className="text-muted-foreground"/>}
-          <Monitor size={14}/> תצוגה מקדימה
-        </div>
-        <div className="flex items-center gap-1">
-          <button onClick={() => setNonce((n) => n + 1)} className="p-1.5 rounded-lg hover:bg-muted" title="רענן">
-            <RefreshCw size={13}/>
-          </button>
-          <button onClick={() => setDocked((d) => !d)} className="p-1.5 rounded-lg hover:bg-muted" title={docked ? "מרחף" : "הצמד לשמאל"}>
-            {docked ? <Maximize2 size={13}/> : <Minimize2 size={13}/>}
-          </button>
-          <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg hover:bg-muted" title="סגור">
-            <X size={13}/>
-          </button>
-        </div>
-      </div>
-      <iframe
-        key={nonce}
-        src="/"
-        title="תצוגה מקדימה"
-        className="flex-1 w-full bg-white"
-      />
-    </div>
-  );
-}
-
 /* ============ Section Header ============ */
 function SectionHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
   return (
@@ -2370,7 +2268,7 @@ const DEFAULT_HOURS: Record<string, DayHours> = Object.fromEntries(
   DAYS.map((d) => [d.key, { open: "09:00", close: "18:00", closed: d.key === "sat" }])
 ) as Record<string, DayHours>;
 
-function SettingsSection() {
+function SettingsSection({ part = "business" }: { part?: "business" | "delivery" | "design" }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [zones, setZones] = useState<ShippingZone[]>([]);
@@ -2417,14 +2315,15 @@ function SettingsSection() {
   };
   useEffect(() => { load(); }, [storeId]);
 
-  async function save(key: string, type: string) {
+  async function saveAll() {
     if (!storeId) return toast.error("לא ניתן לשמור — חנות לא נטענה");
-    setSaving(key);
-    const raw = values[key] ?? "";
-    const v: any = type === "number" ? (raw === "" ? 0 : Number(raw)) : raw;
-    const { error } = await supabase
-      .from("site_settings")
-      .upsert({ store_id: storeId, key, value: v }, { onConflict: "store_id,key" });
+    setSaving("all");
+    const rows = SETTING_FIELDS.map((f) => {
+      const raw = values[f.key] ?? "";
+      const v: any = f.type === "number" ? (raw === "" ? 0 : Number(raw)) : raw;
+      return { store_id: storeId, key: f.key, value: v };
+    });
+    const { error } = await supabase.from("site_settings").upsert(rows, { onConflict: "store_id,key" });
     setSaving(null);
     if (error) return toast.error(error.message);
     toast.success("נשמר");
@@ -2467,21 +2366,13 @@ function SettingsSection() {
 
   return (
     <>
-      <SectionHeader title="הגדרות אתר" subtitle="פרטי החנות, מחירון משלוחים ושעות פעילות"/>
       <div className="space-y-6 max-w-3xl">
-        <section className="bg-card border border-border rounded-2xl p-5">
-          <header className="flex items-center gap-2 mb-4">
-            <div className="bg-primary/10 text-primary p-2 rounded-xl"><SettingsIcon size={18}/></div>
-            <div>
-              <h3 className="font-black text-base">התוכנית והשירותים שלי</h3>
-              <p className="text-xs text-muted-foreground">מה כלול במסלול, מה פעיל ומה אפשר להוסיף</p>
-            </div>
-          </header>
-          <FeaturesPanel />
-        </section>
-        <ThemeColorEditor />
+        {part === "design" && (<>
         <StoreBrandingSection />
+        <ThemeColorEditor />
+        </>)}
         {/* General info */}
+        {part === "business" && (
         <section className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <header className="flex items-center gap-2">
             <div className="bg-primary/10 text-primary p-2 rounded-xl"><SettingsIcon size={18}/></div>
@@ -2493,14 +2384,14 @@ function SettingsSection() {
           {SETTING_FIELDS.map((f) => (
             <div key={f.key}>
               <label className="text-sm font-bold mb-1.5 block">{f.label}</label>
-              <div className="flex gap-2">
+              <div>
                 {f.type === "textarea" ? (
                   <textarea
                     value={values[f.key] ?? ""}
                     onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
                     placeholder={f.placeholder}
                     rows={3}
-                    className="flex-1 bg-background border border-input rounded-lg px-3 py-2 text-sm"
+                    className="w-full bg-background border border-input rounded-xl px-3 py-2.5 text-sm"
                   />
                 ) : (
                   <input
@@ -2508,20 +2399,18 @@ function SettingsSection() {
                     value={values[f.key] ?? ""}
                     onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
                     placeholder={f.placeholder}
-                    className="flex-1 bg-background border border-input rounded-lg px-3 py-2 text-sm"
+                    className="w-full bg-background border border-input rounded-xl px-3 py-2.5 text-sm"
                   />
                 )}
-                <button
-                  onClick={() => save(f.key, f.type)}
-                  disabled={saving === f.key}
-                  className="bg-primary text-primary-foreground font-bold px-4 rounded-lg text-sm disabled:opacity-50 flex items-center gap-1"
-                >
-                  <Check size={14}/> שמור
-                </button>
               </div>
             </div>
           ))}
+          <button onClick={saveAll} disabled={saving === "all"} className="h-11 px-6 rounded-xl bg-primary text-primary-foreground font-bold disabled:opacity-50">
+            {saving === "all" ? "שומר…" : "שמירה"}
+          </button>
         </section>
+        )}
+        {part === "delivery" && (<>
 
         {/* Shipping zones */}
         <section className="bg-card border border-border rounded-2xl p-5 space-y-4">
@@ -2644,6 +2533,7 @@ function SettingsSection() {
             </button>
           </div>
         </section>
+        </>)}
       </div>
     </>
   );

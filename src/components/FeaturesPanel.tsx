@@ -174,7 +174,7 @@ export function FeaturesPanel() {
             <span className="font-bold text-foreground">₪{subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">מע״מ 17%</span>
+            <span className="text-muted-foreground">מע״מ {Math.round(VAT_RATE * 100)}%</span>
             <span className="font-bold text-foreground">₪{vat.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-base pt-2 border-t border-border">

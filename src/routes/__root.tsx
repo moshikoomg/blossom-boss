@@ -8,7 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -141,9 +141,11 @@ function RootComponent() {
           <Toaster position="top-center" richColors duration={1400} closeButton={false} />
           <AccessibilityGate />
           <FlyLayer />
-          <SitePopups />
-          <CookieConsent />
-          <OnboardingSequencer />
+          <StorefrontOnly>
+            <SitePopups />
+            <CookieConsent />
+            <OnboardingSequencer />
+          </StorefrontOnly>
         </CartProvider>
       </StoreProvider>
     </QueryClientProvider>
@@ -177,6 +179,15 @@ function AuthLifecycle() {
     return () => subscription.unsubscribe();
   }, [router, queryClient]);
   return null;
+}
+
+/** Shopper-facing overlays stay off the admin, super-admin and sign-in screens. */
+function isBackOffice(pathname: string) {
+  return pathname.startsWith("/admin") || pathname.startsWith("/super-admin") || pathname.startsWith("/auth");
+}
+function StorefrontOnly({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return isBackOffice(pathname) ? null : <>{children}</>;
 }
 
 function AccessibilityGate() {
