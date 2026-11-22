@@ -44,13 +44,9 @@ export const claimStoreOwnership = createServerFn({ method: "POST" })
       .eq("user_id", userId)
       .maybeSingle();
     if (mine) {
-      if (mine.role !== "owner") {
-        await supabaseAdmin
-          .from("store_members")
-          .update({ role: "owner" })
-          .eq("id", mine.id);
-      }
-      if (store.owner_user_id !== userId) {
+      // Existing staff/managers are NOT promoted here: claiming is only for
+      // unowned or anonymously-owned stores (see below).
+      if (mine.role === "owner" && store.owner_user_id !== userId) {
         await supabaseAdmin
           .from("stores")
           .update({ owner_user_id: userId })

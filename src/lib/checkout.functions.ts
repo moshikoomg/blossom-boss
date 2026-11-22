@@ -50,6 +50,11 @@ async function currentUserId(): Promise<string | null> {
 export const placeOrder = createServerFn({ method: "POST" })
   .inputValidator((d) => PlaceOrderSchema.parse(d))
   .handler(async ({ data }) => {
+    // Card payment charges one Grow page per order, so it is limited to a single address.
+    // (Before: only the first stop was charged and the rest stayed unpaid.)
+    if (data.payment === "credit" && data.stops.length > 1) {
+      return { ok: false as const, error: "תשלום באשראי זמין להזמנה לכתובת אחת. להזמנה לכמה כתובות בחרו Bit." };
+    }
     // Soft paywall: after the trial / paid period plus a short grace, the shop stops taking orders.
     const { data: sub } = await supabaseAdmin
       .from("store_subscriptions")

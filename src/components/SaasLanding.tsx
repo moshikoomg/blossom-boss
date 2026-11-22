@@ -1,3 +1,4 @@
+import { GOOGLE_AUTH_ENABLED } from "@/lib/auth-flags";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import {
   Dialog,
@@ -66,7 +67,7 @@ const HERO_BOUQUETS = [
 ];
 
 const STORE_EXAMPLES = [
-  { name: "פרחי שרה", city: "תל אביב", img: "https://images.unsplash.com/photo-1561181286-d5c92b600cf3?w=500&q=70&auto=format&fit=crop", price: 189 },
+  { name: "פרחי שרה", city: "תל אביב", img: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=500&q=70&auto=format&fit=crop", price: 189 },
   { name: "משתלת הגליל", city: "כרמיאל", img: "https://images.unsplash.com/photo-1508610048659-a06b669e3321?w=500&q=70&auto=format&fit=crop", price: 249 },
   { name: "Blossom Studio", city: "הרצליה", img: "https://images.unsplash.com/photo-1567748157439-651aca2ff064?w=500&q=70&auto=format&fit=crop", price: 320 },
   { name: "אורבן בלום", city: "רמת גן", img: "https://images.unsplash.com/photo-1525310072745-f49212b5ac6d?w=500&q=70&auto=format&fit=crop", price: 159 },
@@ -304,7 +305,7 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
           <div className="flex items-center gap-2">
             <button
               onClick={handleHeaderAuthClick}
-              className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-foreground/15 bg-background/70 text-foreground text-sm font-bold hover:bg-foreground/5 transition"
+              className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-foreground/15 bg-background/70 text-foreground text-sm font-bold whitespace-nowrap hover:bg-foreground/5 transition"
             >
               {headerAuth?.signedIn && headerAuth.ownsStore ? (
                 <><LayoutDashboard size={15} /> ניהול חנות</>
@@ -314,7 +315,7 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
             </button>
             <button
               onClick={openDialog}
-              className="inline-flex items-center gap-1.5 h-10 px-5 rounded-full bg-foreground text-background text-sm font-bold hover:scale-[1.03] transition-transform shadow-lg"
+              className="hidden sm:inline-flex items-center gap-1.5 h-10 px-5 rounded-full bg-foreground text-background text-sm font-bold whitespace-nowrap hover:scale-[1.03] transition-transform shadow-lg"
             >
               פתח חנות עכשיו
               <ArrowLeft size={16} />
@@ -657,7 +658,7 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
                     שתי לחיצות לחנות שלך
                   </DialogTitle>
                   <DialogDescription className="text-sm leading-relaxed pt-1.5 text-muted-foreground">
-                    התחברות מאובטחת עם Google כדי שנוכל לשמור עבורך את החנות ולתת לך גישת מנהל מלאה.
+                    {GOOGLE_AUTH_ENABLED ? "התחברות מאובטחת עם Google" : "הרשמה קצרה עם אימייל וסיסמה"} כדי שנוכל לשמור עבורך את החנות ולתת לך גישת מנהל מלאה.
                   </DialogDescription>
                 </DialogHeader>
 
@@ -669,12 +670,12 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
                   {signingIn ? (
                     <><Loader2 className="animate-spin" size={18} /> מתחבר…</>
                   ) : (
-                    <><GoogleIcon /> התחבר עם Google</>
+                    GOOGLE_AUTH_ENABLED ? <><GoogleIcon /> התחבר עם Google</> : <>הרשמה / התחברות עם אימייל</>
                   )}
                 </button>
 
                 <ul className="mt-6 space-y-2.5 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2"><Check size={16} className="text-primary flex-shrink-0" /> ללא טפסים. ללא קוד SMS.</li>
+                  <li className="flex items-center gap-2"><Check size={16} className="text-primary flex-shrink-0" /> {GOOGLE_AUTH_ENABLED ? "ללא טפסים. ללא קוד SMS." : "בלי קוד SMS. רק אימייל וסיסמה."}</li>
                   <li className="flex items-center gap-2"><Check size={16} className="text-primary flex-shrink-0" /> החנות נשמרת לחשבון שלך אוטומטית.</li>
                   <li className="flex items-center gap-2"><Check size={16} className="text-primary flex-shrink-0" /> אפשר לבטל בכל רגע.</li>
                 </ul>

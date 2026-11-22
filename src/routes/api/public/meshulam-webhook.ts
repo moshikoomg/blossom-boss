@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { approveGrowTransaction } from "@/lib/meshulam.server";
+import { getPlanSettings } from "@/lib/plan-settings.server";
+import { withVat } from "@/lib/plans";
 
 /**
  * Grow (Meshulam) server-to-server notification.
@@ -87,6 +89,14 @@ async function handleSubscription(storeId: string, sum: number, txId: string, f:
     .select("id,current_period_end,is_trial")
     .eq("store_id", storeId)
     .maybeSingle();
+  const { data: store } = await supabaseAdmin.from("stores").select("id").eq("id", storeId).maybeSingle();
+  if (!store) return "unknown store";
+  // The charge must cover at least the current monthly price incl. VAT.
+  const expected = withVat((await getPlanSettings()).monthly_price_ils).total;
+  if (sum + 0.01 < expected) {
+    console.warn("[grow] subscription sum too low", { storeId, expected, got: sum });
+    return "sum mismatch";
+  }
   if (await alreadyProcessed(`grow:${txId}`, storeId)) return "duplicate";
 
   // Extend from the later of now / current period end, so early payments don't lose days.

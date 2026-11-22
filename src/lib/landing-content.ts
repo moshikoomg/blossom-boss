@@ -67,7 +67,7 @@ export const DEFAULT_LANDING: LandingContent = {
     title: "חנויות אמיתיות. תוצאות אמיתיות.",
     lede: "דוגמה למראה של חנות שתקבל תוך 30 שניות — בלי תבניות גנריות.",
     items: [
-      { name: "פרחי שרה", city: "תל אביב", img: "https://images.unsplash.com/photo-1561181286-d5c92b600cf3?w=500&q=70&auto=format&fit=crop", price: 189 },
+      { name: "פרחי שרה", city: "תל אביב", img: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=500&q=70&auto=format&fit=crop", price: 189 },
       { name: "משתלת הגליל", city: "כרמיאל", img: "https://images.unsplash.com/photo-1508610048659-a06b669e3321?w=500&q=70&auto=format&fit=crop", price: 249 },
       { name: "Blossom Studio", city: "הרצליה", img: "https://images.unsplash.com/photo-1567748157439-651aca2ff064?w=500&q=70&auto=format&fit=crop", price: 320 },
       { name: "אורבן בלום", city: "רמת גן", img: "https://images.unsplash.com/photo-1525310072745-f49212b5ac6d?w=500&q=70&auto=format&fit=crop", price: 159 },

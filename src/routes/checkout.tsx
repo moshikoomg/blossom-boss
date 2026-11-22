@@ -59,7 +59,7 @@ function CheckoutPage() {
       .then(({ data }) => {
       for (const row of data || []) {
         const v = (row as any).value;
-        if (row.key === "shipping_price") setShipping(typeof v === "number" ? v : Number(v) || 25);
+        if (row.key === "shipping_price") { const n = Number(v); setShipping(Number.isFinite(n) && n >= 0 ? n : 25); }
         if (row.key === "whatsapp_business") setWhatsappNumber(typeof v === "string" ? v : "");
       }
     });
@@ -238,7 +238,7 @@ function CheckoutPage() {
             <div className="flex items-center justify-between">
               <h2 className="font-black">פרטי משלוח</h2>
               <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
-                <input type="checkbox" checked={multiMode} onChange={(e) => setMultiMode(e.target.checked)} className="h-4 w-4 accent-primary"/>
+                <input type="checkbox" checked={multiMode} onChange={(e) => { setMultiMode(e.target.checked); if (e.target.checked) setPaymentMethod("bit"); }} className="h-4 w-4 accent-primary"/>
                 משלוח למספר כתובות
               </label>
             </div>
@@ -311,11 +311,11 @@ function CheckoutPage() {
                 <p className="text-xs text-muted-foreground">תשלום בעת המסירה דרך וואטסאפ</p>
               </div>
             </button>
-            <button type="button" onClick={() => setPaymentMethod("credit")} className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition ${paymentMethod==="credit"?"border-primary bg-primary/5":"border-border"}`}>
+            <button type="button" disabled={multiMode} onClick={() => setPaymentMethod("credit")} className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition disabled:opacity-50 disabled:cursor-not-allowed ${paymentMethod==="credit"?"border-primary bg-primary/5":"border-border"}`}>
               <CreditCard size={22} className={paymentMethod==="credit"?"text-primary":"text-muted-foreground"}/>
               <div className="text-right flex-1">
                 <p className="font-bold">כרטיס אשראי</p>
-                <p className="text-xs text-muted-foreground">סליקה מאובטחת דרך משולם</p>
+                <p className="text-xs text-muted-foreground">{multiMode ? "זמין להזמנה לכתובת אחת בלבד" : "סליקה מאובטחת דרך Grow"}</p>
               </div>
             </button>
           </div>
