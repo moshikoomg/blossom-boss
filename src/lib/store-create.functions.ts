@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PLATFORM_TEMPLATE_STORE_ID } from "./platform-template";
 import { createLatinSlug } from "./store-slug";
+import { toWhatsAppNumber } from "./florist";
 import { getPlanSettings, trialEndsFromNow } from "./plan-settings.server";
 // Strict image rule: a product/add-on is only kept active if the template's
 // primary image_url is a real http(s) URL. Gallery fallbacks and placeholder
@@ -32,12 +33,13 @@ export const createStoreForUser = createServerFn({ method: "POST" })
       .object({
         name: z.string().min(1).max(80),
         city: z.string().max(80).optional().default(""),
+        phone: z.string().max(30).optional().default(""),
         theme: ThemeSchema.optional().default({}),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { name, city, theme } = data;
+    const { name, city, phone, theme } = data;
     const { userId, claims } = context as { userId: string; claims: { email?: string } };
 
     // Generate unique slug
@@ -119,7 +121,9 @@ export const createStoreForUser = createServerFn({ method: "POST" })
     // Deep-clone the platform template catalog into the new store. All
     // categories/products/add-ons become NEW rows owned by this store_id,
     // so future edits never leak across stores.
-    await cloneTemplateCatalog(store.id, theme as any);
+    // Only the structure is copied (categories, layout settings): no demo
+    // products, add-ons or popups, so the florist starts with a clean store.
+    await cloneTemplateCatalog(store.id, theme as any, { withProducts: false });
 
     // Seed minimal brand identity in site_settings so the storefront immediately
     // shows the chosen name + city instead of falling back to the template.
@@ -128,6 +132,12 @@ export const createStoreForUser = createServerFn({ method: "POST" })
         { store_id: store.id, key: "store_name", value: name as any },
         { store_id: store.id, key: "store_tagline", value: (city ? `חנות פרחים ב${city}` : "") as any },
         { store_id: store.id, key: "store_city", value: (city || "") as any },
+        ...(phone
+          ? [
+              { store_id: store.id, key: "store_phone", value: phone as any },
+              { store_id: store.id, key: "whatsapp_business", value: (toWhatsAppNumber(phone) ?? "") as any },
+            ]
+          : []),
       ],
       { onConflict: "store_id,key" },
     );
@@ -151,7 +161,12 @@ function placeholderSvg(primary: string, accent: string, label: string) {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-export async function cloneTemplateCatalog(newStoreId: string, theme: Record<string, string> | null) {
+export async function cloneTemplateCatalog(
+  newStoreId: string,
+  theme: Record<string, string> | null,
+  opts: { withProducts?: boolean } = {},
+) {
+  const withProducts = opts.withProducts ?? true;
   const primary = theme?.primary || "#e11d48";
   const accent = theme?.accent || theme?.secondary || "#fb7185";
 
@@ -230,7 +245,7 @@ export async function cloneTemplateCatalog(newStoreId: string, theme: Record<str
   if (pFetchErr) throw new Error(`template products read failed: ${pFetchErr.message}`);
 
   const productIdMap = new Map<string, string>();
-  if (tplProducts && tplProducts.length) {
+  if (withProducts && tplProducts && tplProducts.length) {
     const tplProductIds = tplProducts.map((p) => p.id);
     const { data: tplImgsPre } = await supabaseAdmin
       .from("product_images")
@@ -349,7 +364,7 @@ export async function cloneTemplateCatalog(newStoreId: string, theme: Record<str
     .order("display_order");
   if (aFetchErr) throw new Error(`template add-ons read failed: ${aFetchErr.message}`);
 
-  if (tplAddons && tplAddons.length) {
+  if (withProducts && tplAddons && tplAddons.length) {
     const rows = tplAddons.map((a) => {
       const url = a.image_url;
       const hasValidImage =
@@ -402,7 +417,7 @@ export async function cloneTemplateCatalog(newStoreId: string, theme: Record<str
     .select("title, body, image_url, bg_color, text_color, cta_label, cta_url, action_type, layout, position, shape, size, animation, text_align, bg_opacity, overlay_opacity, content_padding, bg_video_url, trigger_type, trigger_value, trigger_category_ids, filter_product_ids, rotate_seconds, auto_close_seconds, starts_at, ends_at, display_order, active")
     .eq("store_id", PLATFORM_TEMPLATE_STORE_ID)
     .order("display_order");
-  if (tplPopups && tplPopups.length) {
+  if (withProducts && tplPopups && tplPopups.length) {
     const rows = tplPopups.map((p) => ({ ...p, store_id: newStoreId }));
     const { error: pErr } = await supabaseAdmin.from("site_popups").insert(rows);
     if (pErr) throw new Error(`site_popups clone failed: ${pErr.message}`);
