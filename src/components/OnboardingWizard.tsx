@@ -30,7 +30,7 @@ const LAYOUTS: { id: StorefrontLayout; title: string; text: string; recommended?
   { id: "side", title: "תפריט צד", text: "רשימת קטגוריות בצד, והמוצרים לידה." },
 ];
 
-const COLORS = [
+export const COLORS = [
   { id: "rose", label: "ורוד", primary: "#c9356b", accent: "#f8c8d8" },
   { id: "green", label: "ירוק", primary: "#2f7d4f", accent: "#cfe8d6" },
   { id: "black", label: "שחור וזהב", primary: "#1a1a1a", accent: "#c9a84c" },

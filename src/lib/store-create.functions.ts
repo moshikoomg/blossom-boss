@@ -138,6 +138,8 @@ export const createStoreForUser = createServerFn({ method: "POST" })
         { store_id: store.id, key: "store_tagline", value: (city ? `חנות פרחים ב${city}` : "") as any },
         { store_id: store.id, key: "store_city", value: (city || "") as any },
         { store_id: store.id, key: "storefront_layout", value: layout as any },
+        // Guided setup: admin tour, then storefront styling, then products.
+        { store_id: store.id, key: "owner_setup", value: "tour" as any },
         { store_id: store.id, key: "addon_sales_agent", value: (addons.sales_agent ?? true) as any },
         { store_id: store.id, key: "addon_whatsapp", value: (addons.whatsapp ?? true) as any },
         ...(phone
