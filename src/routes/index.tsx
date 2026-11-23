@@ -669,7 +669,7 @@ function Index() {
               <p className="text-center text-xs text-muted-foreground">הקטלוג המלא עולה בקרוב. הפריטים כאן מוצגים להמחשה.</p>
             )
           )}
-          <div className={`grid gap-3 md:gap-5 auto-rows-min grid-flow-dense items-start content-start ${splitOpen || (editing && panel) ? "grid-cols-2 md:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"}`}>
+          <div className={`grid gap-3 md:gap-5 auto-rows-min grid-flow-dense items-start content-start ${splitOpen || (editing && panel) ? "grid-cols-2 md:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6"}`}>
             {loading && products.length === 0
               ? Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="bg-card rounded-2xl p-2.5 border border-border/70 shadow-[var(--shadow-card)] flex flex-col">
@@ -750,9 +750,11 @@ function Index() {
         </div>
 
         <footer className={`text-center text-sm text-muted-foreground py-8 border-t border-border ${sideMenu ? "md:col-span-2" : ""}`}>
-          <p className="font-bold">{displayStoreName} · {get("store_phone", currentStore?.contact_phone || "")}</p>
-          <p className="mt-1">{get("store_address", "")} · {get("store_hours", "")}</p>
-          <p className="mt-1 text-xs">{get("delivery_info", "")}</p>
+          <p className="font-bold">{[displayStoreName, get("store_phone", currentStore?.contact_phone || "")].filter(Boolean).join(" · ")}</p>
+          {(get("store_address", "") || get("store_hours", "")) && (
+            <p className="mt-1">{[get("store_address", ""), get("store_hours", "")].filter(Boolean).join(" · ")}</p>
+          )}
+          {get("delivery_info", "") && <p className="mt-1 text-xs">{get("delivery_info", "")}</p>}
         </footer>
       </main>
       {isOwner && setupStep && (editing ? (
@@ -1240,14 +1242,16 @@ function CardItem({ p, cat, gallery, activeIdx, setActiveIdx, onOpen, onZoom, on
               <div className="px-1 flex flex-col flex-1">
         <button onClick={onOpen} className="font-semibold text-sm text-foreground line-clamp-1 hover:text-primary tracking-tight text-right">{p.name}</button>
                 <div className="flex items-end justify-between mt-2 pt-1">
-                  <div className="flex flex-col leading-tight">
+                  <div className="flex flex-col leading-tight min-w-0">
                     {minSizePrice !== undefined && (
-                      <span className="text-[9px] text-muted-foreground">החל מ-</span>
+                      <span className="text-[10px] text-muted-foreground">החל מ-</span>
                     )}
-                    {p.original_price && p.original_price > (minSizePrice ?? p.price) && (
-                      <PriceStrike value={p.original_price} className="text-[10px]" />
-                    )}
-                    <span className="font-bold text-primary text-[15px]">₪{minSizePrice !== undefined ? minSizePrice : p.price}</span>
+                    <span className="flex items-baseline gap-1.5 flex-wrap">
+                      <span className="font-bold text-primary text-[15px]">₪{minSizePrice !== undefined ? minSizePrice : p.price}</span>
+                      {p.original_price && p.original_price > (minSizePrice ?? p.price) && (
+                        <PriceStrike value={p.original_price} className="text-[11px]" />
+                      )}
+                    </span>
                   </div>
                   {demo ? (
                     <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpen(); }}
