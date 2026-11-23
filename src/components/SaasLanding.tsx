@@ -91,7 +91,7 @@ const TESTIMONIALS = [
 ];
 
 const FAQS = [
-  { q: "כמה זמן לוקח להעלות חנות?", a: "שתי לחיצות. מתחברים עם Google, בוחרים אם יש לכם אתר קיים (אנחנו סורקים ומעלים אוטומטית) או מתחילים מתבנית — והחנות עולה תוך פחות מ-30 שניות." },
+  { q: "כמה זמן לוקח להעלות חנות?", a: "דקה. מתחברים עם Google, ממלאים שם, טלפון ועיר, והחנות פתוחה. את המוצרים מוסיפים אחר כך מהניהול." },
   { q: "אני לא טכני בכלל. אסתדר?", a: "בוודאי. הכל בעברית, מהמובייל, ובלי קוד. אם יש שאלה — צ׳אט תמיכה חי בעברית מהדאשבורד." },
   { q: "איך מקבלים תשלומים?", a: "Bit, אשראי, העברה בנקאית או מזומן במשלוח. הכסף נכנס ישירות לחשבון שלך — בלי עמלת ביניים." },
   { q: "אני יכול לעצב את החנות כמו שאני רוצה?", a: "כן. בוחרים פלטת צבעים, מעלים לוגו, משנים תמונות, עורכים מחירים — הכל מהדאשבורד בעברית בלי תלות בנו." },
@@ -277,9 +277,8 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
     setDialogOpen(false);
     if (storeId) {
       try { localStorage.setItem("tmm_store_override", storeId); } catch { /* ignore */ }
-      // Open the real storefront — the merchant gets a standing site, not
-      // a preview inside the popup. They can jump into /admin from there.
-      window.location.replace(`/?store=${storeId}&onboarded=1&postOnboard=1`);
+      // Straight into the store's admin, with no extra popups.
+      window.location.replace(`/admin?store=${storeId}&onboarded=1`);
     } else {
       window.location.replace("/admin");
     }
@@ -702,11 +701,11 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
               <div className="relative">
                 <DialogHeader className="text-right mb-5">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/12 text-primary text-[11px] font-bold tracking-wide mb-3 w-fit">
-                    <Sparkles size={12} /> איך נתחיל
+                    <Sparkles size={12} /> עוד שלב אחד
                   </div>
-                  <DialogTitle className="text-2xl md:text-3xl font-black leading-tight text-foreground">החנות שלך, ב‑60 שניות</DialogTitle>
+                  <DialogTitle className="text-2xl md:text-3xl font-black leading-tight text-foreground">פרטי החנות</DialogTitle>
                   <DialogDescription className="text-sm text-muted-foreground pt-1">
-                    הדבק את כתובת האתר שלך ונסרוק אותו — או התחל מחנות חדשה.
+                    ארבעה פרטים קצרים, והחנות פתוחה.
                   </DialogDescription>
                 </DialogHeader>
                 <Suspense fallback={<div className="py-10 grid place-items-center"><Loader2 className="animate-spin text-primary" size={24} /></div>}>
