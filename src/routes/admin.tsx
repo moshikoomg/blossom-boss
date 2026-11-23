@@ -1,6 +1,6 @@
 import { GOOGLE_AUTH_ENABLED } from "@/lib/auth-flags";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { setSupabaseStoreHeader } from "@/lib/store-context";
 import { useStore } from "@/lib/store-context";
@@ -29,6 +29,8 @@ import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { QuotaUsagePanel } from "@/components/QuotaUsagePanel";
 import { TodaySection } from "@/components/admin/TodaySection";
 import { SuppliersSection } from "@/components/admin/SuppliersSection";
+import { AdminTour } from "@/components/owner/AdminTour";
+import { useSetupStep, stepIndex, SETUP_STEPS } from "@/lib/owner-setup";
 import {
   awaitSafeSession,
   clearOAuthStart,
@@ -467,16 +469,29 @@ function AdminShell({ email, isPlatformAdmin = false }: { email: string; isPlatf
 
   const area = areaOf(section);
   const { store: shellStore } = useStore();
+  // Guided setup (tour -> storefront -> products). New stores start at "tour".
+  const [setupStep, setSetupStep] = useSetupStep(shellStore?.id);
+  const [forceTour, setForceTour] = useState(() => {
+    try { return new URL(window.location.href).searchParams.get("tour") === "1"; } catch { return false; }
+  });
+  const [tourArea, setTourArea] = useState<string | null>(null);
+  const showTour = !(isPlatformAdmin && !impersonatedId) && (forceTour || setupStep === "tour");
+  const finishTour = useCallback(async () => {
+    setForceTour(false);
+    if (setupStep === "tour" || setupStep === null) await setSetupStep("front");
+    window.location.href = "/?edit=1";
+  }, [setupStep, setSetupStep]);
 
   const navButton = (a: Area, compact = false) => {
     const I = a.icon;
     const active = area.id === a.id;
+    const lit = tourArea === a.id;
     return (
       <button key={a.id} onClick={() => { setSection(a.tabs[0].id); setMobileOpen(false); }}
         aria-current={active ? "page" : undefined}
         className={compact
           ? `flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold ${active ? "text-primary" : "text-muted-foreground"}`
-          : `w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] font-semibold transition ${active ? "bg-primary/10 text-primary" : "text-foreground/80 hover:bg-muted"}`}>
+          : `w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] font-semibold transition ${active ? "bg-primary/10 text-primary" : "text-foreground/80 hover:bg-muted"} ${lit ? "ring-2 ring-primary ring-offset-2 ring-offset-card bg-primary/10 text-primary scale-[1.03]" : ""}`}>
         <I size={compact ? 20 : 18} aria-hidden /> {a.label}
       </button>
     );
@@ -500,8 +515,16 @@ function AdminShell({ email, isPlatformAdmin = false }: { email: string; isPlatf
           {AREAS.map((a) => navButton(a))}
         </nav>
         <div className="p-3 border-t border-border space-y-1">
-          <a href="/" target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-muted">
-            <Eye size={16} aria-hidden/> צפייה בחנות
+          {(setupStep === "front" || setupStep === "products") && (
+            <a href="/?edit=1" className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold text-primary bg-primary/10 hover:bg-primary/15">
+              <Pencil size={16} aria-hidden/> המשך הקמה · שלב {stepIndex(setupStep) + 1} מתוך {SETUP_STEPS.length}
+            </a>
+          )}
+          <a href="/?edit=1" className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-muted">
+            <Pencil size={16} aria-hidden/> עריכת חזית החנות
+          </a>
+          <a href="/?view=1" className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-muted">
+            <Eye size={16} aria-hidden/> תצוגת לקוח
           </a>
           <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-muted">
             <LogOut size={16} aria-hidden/> התנתקות
@@ -555,6 +578,7 @@ function AdminShell({ email, isPlatformAdmin = false }: { email: string; isPlatf
           )}
         </div>
       </main>
+      {showTour && <AdminTour storeName={shellStore?.name} onArea={setTourArea} onFinish={finishTour} />}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-card border-t border-border flex pb-[env(safe-area-inset-bottom)]" aria-label="ניווט מהיר">
         {AREAS.filter((a) => MOBILE_AREAS.includes(a.id)).map((a) => navButton(a, true))}
         <button onClick={() => setMobileOpen(true)} className="flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold text-muted-foreground">
@@ -1318,7 +1342,7 @@ function ProductsSection() {
   return (
     <>
       <SectionHeader title="מוצרים" subtitle={activeStore ? `חנות פעילה: ${activeStore.name}` : "טוען חנות…"} action={
-        <button onClick={()=>setEditing({ name:"", description:"", price:0, stock:0, image_url:"", active:true, display_order: products.length })} className="bg-primary text-primary-foreground font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm"><PlusIcon size={16}/><span className="hidden sm:inline">מוצר חדש</span></button>
+        <button onClick={()=>setEditing({ name:"", description:"", price:0, stock:100, image_url:"", active:true, display_order: products.length })} className="bg-primary text-primary-foreground font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm"><PlusIcon size={16}/><span className="hidden sm:inline">מוצר חדש</span></button>
       }/>
       {products.length === 0 ? <Empty text="עוד אין מוצרים. הוסף את הראשון!"/> : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">

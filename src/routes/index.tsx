@@ -31,6 +31,11 @@ import {
   WA_FLY_EVENT,
 } from "@/components/OnboardingSequencer";
 import { celebrate } from "@/lib/celebrate";
+import { DEMO_CATEGORIES, DEMO_PRODUCTS } from "@/lib/demo-catalog";
+import { readOwnerMode, useSetupStep, writeOwnerMode, type OwnerMode } from "@/lib/owner-setup";
+import {
+  EditableLogo, EditableText, OwnerBar, OwnerViewPill, ProductsPanel, StylePanel, type OwnerPanel,
+} from "@/components/owner/StorefrontOwner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -168,9 +173,10 @@ type CategoryEx = Category & { display_mode?: string };
 type Settings = Record<string, unknown>;
 
 function Index() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [dbProducts, setProducts] = useState<Product[]>([]);
+  const [dbCategories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
   const [galleryMap, setGalleryMap] = useState<Record<string, string[]>>({});
   const [minSizeMap, setMinSizeMap] = useState<Record<string, number>>({});
   const [activeImg, setActiveImg] = useState<Record<string, number>>({});
@@ -184,7 +190,7 @@ function Index() {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
   const [priceBounds, setPriceBounds] = useState<[number, number]>([0, 0]);
   const [priceTouched, setPriceTouched] = useState(false);
-  const [productCats, setProductCats] = useState<Record<string, string[]>>({});
+  const [dbProductCats, setProductCats] = useState<Record<string, string[]>>({});
   const [isAdmin, setIsAdmin] = useState(false);
   const [plusBurst, setPlusBurst] = useState<Record<string, number>>({});
   const [urlSignature, setUrlSignature] = useState(() => getStorefrontUrlSignature());
@@ -193,7 +199,7 @@ function Index() {
   const [cartOpen, setCartOpen] = useState(false);
   const isMobile = useIsMobile();
   const splitOpen = !!sheetId && !isMobile;
-  const { store: currentStore } = useStore();
+  const { store: currentStore, refresh: refreshStore } = useStore();
   const isPreview = isLazyPreviewMode();
   const storeIdForQueries = isPreview ? PLATFORM_TEMPLATE_STORE_ID : currentStore?.id;
 
@@ -308,7 +314,7 @@ function Index() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [storeIdForQueries, urlSignature]);
+  }, [storeIdForQueries, urlSignature, reloadKey]);
 
   useEffect(() => {
     (async () => {
@@ -332,6 +338,78 @@ function Index() {
       }
     })();
   }, [storeIdForQueries]);
+
+  // A store with no products yet shows sample flowers (never orderable),
+  // which disappear by themselves once the first real product exists.
+  const demoMode = !loading && dbProducts.length === 0 && !!storeIdForQueries && !isPreview;
+  const products: Product[] = demoMode
+    ? DEMO_PRODUCTS.map((d) => ({ ...d, rating: 5, badge_color: null, stock: 99 }))
+    : dbProducts;
+  const categories: Category[] = demoMode ? DEMO_CATEGORIES.map((c) => ({ ...c })) : dbCategories;
+  const productCats: Record<string, string[]> = demoMode
+    ? Object.fromEntries(DEMO_PRODUCTS.map((d) => [d.id, [d.category_id]]))
+    : dbProductCats;
+
+  // Owner tools: edit mode with the setup steps, or the exact customer view.
+  const isOwner = isAdmin && !isPreview;
+  const [setupStep, setSetupStep] = useSetupStep(isOwner ? currentStore?.id : null);
+  const [ownerMode, setOwnerMode] = useState<OwnerMode | null>(() => readOwnerMode());
+  const [panel, setPanel] = useState<OwnerPanel>(null);
+  const autoPanelDone = useRef(false);
+  useEffect(() => {
+    if (!isOwner || !setupStep) return;
+    if (!ownerMode) setOwnerMode(setupStep === "done" ? "view" : "edit");
+    if (autoPanelDone.current) return;
+    autoPanelDone.current = true;
+    const mode = ownerMode ?? (setupStep === "done" ? "view" : "edit");
+    if (mode !== "edit") return;
+    if (setupStep === "tour" || setupStep === "front") setPanel("style");
+    if (setupStep === "products") setPanel("products");
+    if (setupStep === "tour") void setSetupStep("front");
+  }, [isOwner, setupStep, ownerMode, setSetupStep]);
+  useEffect(() => {
+    // Drop ?edit=1 / ?view=1 from the address bar once read.
+    const u = new URL(window.location.href);
+    if (u.searchParams.has("edit") || u.searchParams.has("view")) {
+      if (ownerMode) writeOwnerMode(ownerMode);
+      u.searchParams.delete("edit");
+      u.searchParams.delete("view");
+      window.history.replaceState({}, "", u.pathname + (u.search ? u.search : "") + u.hash);
+    }
+  }, [ownerMode]);
+  const editing = isOwner && ownerMode === "edit";
+  const switchMode = (m: OwnerMode) => {
+    setOwnerMode(m);
+    writeOwnerMode(m);
+    if (m === "view") setPanel(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  async function saveSetting(key: string, value: unknown) {
+    if (!currentStore) return false;
+    const prev = settings[key];
+    setSettings((s) => ({ ...s, [key]: value }));
+    const { error } = await supabase
+      .from("site_settings")
+      .upsert({ store_id: currentStore.id, key, value: value as never }, { onConflict: "store_id,key" });
+    if (error) {
+      setSettings((s) => ({ ...s, [key]: prev }));
+      toast.error("לא נשמר. נסו שוב.");
+      return false;
+    }
+    return true;
+  }
+  async function saveStoreName(v: string) {
+    if (!currentStore || !v) { toast.error("שם החנות לא יכול להיות ריק"); return false; }
+    const ok = await saveSetting("store_name", v);
+    if (!ok) return false;
+    await supabase.from("stores").update({ name: v }).eq("id", currentStore.id);
+    await refreshStore();
+    return true;
+  }
+  function demoTap() {
+    if (editing) setPanel("products");
+    else toast("זה פריט לדוגמה", { description: "הקטלוג של החנות עולה בקרוב. לשאלות והזמנות אפשר לפנות בוואטסאפ." });
+  }
 
   // Auto-apply coupon from ?coupon=XXXX share link
   useEffect(() => {
@@ -405,17 +483,22 @@ function Index() {
     : filtered;
 
   return (
-    <div dir="rtl" className="min-h-screen bg-background">
-      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-md border-b border-border px-3 sm:px-4 md:px-8 py-3 flex items-center justify-between gap-2">
+    <div dir="rtl" className={`min-h-screen bg-background ${editing ? "pt-12" : ""} ${editing && panel ? "md:pl-[23rem]" : ""}`}>
+      <header className={`sticky ${editing ? "top-12" : "top-0"} z-30 bg-background/85 backdrop-blur-md border-b border-border px-3 sm:px-4 md:px-8 py-3 flex items-center justify-between gap-2`}>
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-          <img src={currentStore?.logo_url || logoImg} alt={`לוגו ${currentStore?.name || "החנות"}`} className="w-10 h-10 rounded-2xl object-contain bg-primary/5 shrink-0"/>
-          <div className="min-w-0">
-            <h1 className="text-base md:text-lg font-semibold text-foreground leading-tight tracking-tight truncate">{displayStoreName}</h1>
-            <p className="text-[10px] md:text-xs text-muted-foreground truncate">{get("store_tagline", currentStore?.description || "")}</p>
+          <EditableLogo editing={editing} src={currentStore?.logo_url || logoImg} alt={`לוגו ${currentStore?.name || "החנות"}`} />
+          <div className="min-w-0 space-y-1">
+            <EditableText as="h1" editing={editing} label="שם החנות" placeholder="שם החנות" value={displayStoreName}
+              onSave={saveStoreName}
+              className="text-base md:text-lg font-semibold text-foreground leading-tight tracking-tight truncate block" />
+            <EditableText as="p" editing={editing} label="השורה מתחת לשם" placeholder="משפט קצר על החנות, למשל: זרים טריים עם משלוח היום"
+              value={get("store_tagline", currentStore?.description || "")}
+              onSave={(v) => saveSetting("store_tagline", v)}
+              className="text-[10px] md:text-xs text-muted-foreground truncate block" />
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {isAdmin && (
+          {isAdmin && !isOwner && (
             <Link
               to="/admin"
               aria-label="הגדרות החנות"
@@ -549,11 +632,12 @@ function Index() {
                   {list.map((p) => (
                     <div key={p.id} className="flex-shrink-0 w-[160px] md:w-[200px] snap-start">
                       <CardItem p={p} cat={catById(p.category_id)}
+                        demo={demoMode}
                         minSizePrice={minSizeMap[p.id]}
                         gallery={[p.image_url, ...(galleryMap[p.id] || []).filter((u) => u !== p.image_url)].filter((u): u is string => !!u && typeof u === "string" && u.trim() !== "")}
                         activeIdx={activeImg[p.id] || 0}
                         setActiveIdx={(i) => setActiveImg((s) => ({ ...s, [p.id]: i }))}
-                        onOpen={() => setSheetId(p.id)}
+                        onOpen={() => (demoMode ? demoTap() : setSheetId(p.id))}
                         active={sheetId === p.id}
                         onZoom={(src) => setZoomImg(src)}
                         onAdd={(el) => {
@@ -570,7 +654,22 @@ function Index() {
               </section>
             );
           })}
-          <div className={`grid gap-3 md:gap-5 auto-rows-min grid-flow-dense items-start content-start ${splitOpen ? "grid-cols-2 md:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"}`}>
+          {demoMode && (
+            editing ? (
+              <div className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                <p className="flex-1 text-sm leading-relaxed">
+                  <span className="font-bold">אלה פרחים לדוגמה, כדי שהחנות לא תיראה ריקה.</span>{" "}
+                  לקוחות רואים אותם אבל לא יכולים להזמין. הם יורדים מעצמם כשתעלו את המוצר הראשון שלכם.
+                </p>
+                <button onClick={() => setPanel("products")} className="h-11 px-5 rounded-xl bg-primary text-primary-foreground font-bold inline-flex items-center justify-center gap-2 shrink-0">
+                  <Plus size={18} aria-hidden /> העלאת המוצרים שלי
+                </button>
+              </div>
+            ) : (
+              <p className="text-center text-xs text-muted-foreground">הקטלוג המלא עולה בקרוב. הפריטים כאן מוצגים להמחשה.</p>
+            )
+          )}
+          <div className={`grid gap-3 md:gap-5 auto-rows-min grid-flow-dense items-start content-start ${splitOpen || (editing && panel) ? "grid-cols-2 md:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"}`}>
             {loading && products.length === 0
               ? Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="bg-card rounded-2xl p-2.5 border border-border/70 shadow-[var(--shadow-card)] flex flex-col">
@@ -584,15 +683,23 @@ function Index() {
                 ))
               : gridProducts.length === 0
               ? null
-              : gridProducts.map((p, gi) => (
+              : [
+                ...(editing && !demoMode ? [
+                  <button key="add-tile" onClick={() => setPanel("products")}
+                    className="aspect-[4/5] rounded-2xl border-2 border-dashed border-primary/50 bg-primary/5 hover:bg-primary/10 text-primary font-bold flex flex-col items-center justify-center gap-2 transition">
+                    <Plus size={28} aria-hidden /> הוספת מוצר
+                  </button>,
+                ] : []),
+                ...gridProducts.map((p, gi) => (
               <CardItem key={p.id} p={p} cat={catById(p.category_id)}
+                demo={demoMode}
                 priority={gi < 4}
                 spanClass={(p.highlight_size || 1) >= 2 ? "col-span-2" : ""}
                 minSizePrice={minSizeMap[p.id]}
                 gallery={[p.image_url, ...(galleryMap[p.id] || []).filter((u) => u !== p.image_url)].filter((u): u is string => !!u && typeof u === "string" && u.trim() !== "")}
                 activeIdx={activeImg[p.id] || 0}
                 setActiveIdx={(i) => setActiveImg((s) => ({ ...s, [p.id]: i }))}
-                onOpen={() => setSheetId(p.id)}
+                onOpen={() => (demoMode ? demoTap() : setSheetId(p.id))}
                 active={sheetId === p.id}
                 onZoom={(src) => setZoomImg(src)}
                 onAdd={(el) => {
@@ -603,7 +710,7 @@ function Index() {
                 }}
                 burst={plusBurst[p.id] || 0}
               />
-            ))}
+            ))]}
           </div>
           {!loading && gridProducts.length === 0 && (
             <div className="bg-card border border-border rounded-3xl p-10 text-center space-y-3">
@@ -648,6 +755,32 @@ function Index() {
           <p className="mt-1 text-xs">{get("delivery_info", "")}</p>
         </footer>
       </main>
+      {isOwner && setupStep && (editing ? (
+        <OwnerBar step={setupStep} panel={panel} onPanel={setPanel} onView={() => switchMode("view")} />
+      ) : (
+        <OwnerViewPill onEdit={() => switchMode("edit")} />
+      ))}
+      {editing && panel === "style" && (
+        <StylePanel
+          layout={layout}
+          onLayout={(l) => void saveSetting("storefront_layout", l)}
+          isSetup={setupStep === "front" || setupStep === "tour"}
+          onApprove={() => { void setSetupStep("products"); setPanel("products"); toast.success("החזית אושרה"); }}
+          onClose={() => setPanel(null)}
+        />
+      )}
+      {editing && panel === "products" && currentStore && (
+        <ProductsPanel
+          storeId={currentStore.id}
+          categories={dbCategories.map((c) => ({ id: c.id, name: c.name }))}
+          firstProducts={dbProducts.length === 0}
+          isSetup={setupStep !== "done"}
+          onSaved={() => setReloadKey((k) => k + 1)}
+          onFinishSetup={() => void setSetupStep("done")}
+          onView={() => switchMode("view")}
+          onClose={() => setPanel(null)}
+        />
+      )}
       <ProductDetail productId={sheetId} open={!!sheetId} onOpenChange={(v) => !v && setSheetId(null)} />
       <CartPanel open={cartOpen} onClose={() => setCartOpen(false)} />
       {addonOn("addon_whatsapp") && (
@@ -976,7 +1109,8 @@ function normalizeProductImageUrl(value: unknown): string {
   return trimmed;
 }
 
-function CardItem({ p, cat, gallery, activeIdx, setActiveIdx, onOpen, onZoom, onAdd, active, minSizePrice, burst, spanClass, priority }: {
+function CardItem({ p, cat, gallery, activeIdx, setActiveIdx, onOpen, onZoom, onAdd, active, minSizePrice, burst, spanClass, priority, demo }: {
+  demo?: boolean;
   p: Product; cat?: Category; gallery: string[]; activeIdx: number;
   setActiveIdx: (i: number) => void; onOpen: () => void; onZoom: (src: string) => void;
   onAdd: (el: HTMLElement | null) => void;
@@ -1115,6 +1249,13 @@ function CardItem({ p, cat, gallery, activeIdx, setActiveIdx, onOpen, onZoom, on
                     )}
                     <span className="font-bold text-primary text-[15px]">₪{minSizePrice !== undefined ? minSizePrice : p.price}</span>
                   </div>
+                  {demo ? (
+                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpen(); }}
+                      className="text-[11px] font-semibold text-muted-foreground border border-border rounded-xl px-2.5 py-1.5 hover:bg-muted"
+                      aria-label="פריט לדוגמה, לא ניתן להזמין">
+                      לדוגמה
+                    </button>
+                  ) : (
                   <button
                   disabled={p.stock === 0}
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpen(); }}
@@ -1128,6 +1269,7 @@ function CardItem({ p, cat, gallery, activeIdx, setActiveIdx, onOpen, onZoom, on
                       </span>
                     ) : null}
                   </button>
+                  )}
                 </div>
               </div>
     </article>
