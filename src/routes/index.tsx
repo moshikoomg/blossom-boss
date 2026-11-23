@@ -352,6 +352,13 @@ function Index() {
   }, [setCoupon]);
 
   const get = (k: string, fb = "") => (settings[k] as string) ?? fb;
+  // Storefront style picked during onboarding: gallery (default), shelves
+  // (top menu + a row per category) or side (category menu on the side).
+  const layout = (["gallery", "shelves", "side"].includes(String(settings.storefront_layout))
+    ? String(settings.storefront_layout)
+    : "gallery") as "gallery" | "shelves" | "side";
+  const sideMenu = layout === "side";
+  const addonOn = (k: string) => settings[k] !== false && settings[k] !== "false";
   const displayStoreName = getPreviewDisplayName(get("store_name", currentStore?.name || "החנות"));
   const catById = (id: string | null) => (id ? categories.find((c) => c.id === id) : undefined);
   const catsOfProduct = (p: Product) => productCats[p.id] || (p.category_id ? [p.category_id] : []);
@@ -388,7 +395,9 @@ function Index() {
   const visibleCategories = categories.filter((c) => (productCountByCat[c.id] || 0) > 0);
 
   // Split into scroll-rows vs grid categories
-  const scrollCats = visibleCategories.filter((c) => (c as CategoryEx).display_mode === "scroll");
+  const scrollCats = layout === "shelves"
+    ? visibleCategories
+    : visibleCategories.filter((c) => (c as CategoryEx).display_mode === "scroll");
   const scrollCatIds = new Set(scrollCats.map((c) => c.id));
   const showScrollSections = activeCat === "הכל" && !filterIds && !saleOnly && !search && !priceFilterActive && scrollCats.length > 0;
   const gridProducts = showScrollSections
@@ -430,11 +439,13 @@ function Index() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-6 space-y-6">
+      <main className={`max-w-7xl mx-auto px-4 md:px-8 py-6 space-y-6 ${sideMenu ? "md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:gap-x-8 md:gap-y-6 md:space-y-0 md:items-start" : ""}`}>
         {/* Banner area renders ONLY when active slides exist; no empty placeholders. */}
-        <HeroCarousel />
+        <div className={sideMenu ? "md:col-span-2 empty:hidden" : "empty:hidden"}>
+          <HeroCarousel />
+        </div>
 
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 pt-1 -mx-1 px-1">
+        <div className={`flex gap-2 overflow-x-auto scrollbar-hide pb-2 pt-1 -mx-1 px-1 ${sideMenu ? "md:flex-col md:row-span-2 md:sticky md:top-24 md:overflow-visible md:mx-0 md:px-0 md:[&>button]:text-right md:[&>button]:rounded-xl" : ""}`}>
           {(saleOnly || filterIds) && (
             <button onClick={() => { setSaleOnly(false); setFilterIds(null); const u = new URL(window.location.href); u.searchParams.delete("filter"); u.searchParams.delete("ids"); window.history.replaceState({}, "", u.toString()); }}
               className="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-rose-50 text-rose-600 border border-rose-200">
@@ -631,7 +642,7 @@ function Index() {
           )}
         </div>
 
-        <footer className="text-center text-sm text-muted-foreground py-8 border-t border-border">
+        <footer className={`text-center text-sm text-muted-foreground py-8 border-t border-border ${sideMenu ? "md:col-span-2" : ""}`}>
           <p className="font-bold">{displayStoreName} · {get("store_phone", currentStore?.contact_phone || "")}</p>
           <p className="mt-1">{get("store_address", "")} · {get("store_hours", "")}</p>
           <p className="mt-1 text-xs">{get("delivery_info", "")}</p>
@@ -639,7 +650,9 @@ function Index() {
       </main>
       <ProductDetail productId={sheetId} open={!!sheetId} onOpenChange={(v) => !v && setSheetId(null)} />
       <CartPanel open={cartOpen} onClose={() => setCartOpen(false)} />
-      <WhatsAppFloater phone={get("whatsapp_business", currentStore?.whatsapp_business || "") as string} />
+      {addonOn("addon_whatsapp") && (
+        <WhatsAppFloater phone={get("whatsapp_business", currentStore?.whatsapp_business || "") as string} />
+      )}
       <OnboardingPrompt
         storeId={currentStore?.id || null}
         existingPhone={get("whatsapp_business", currentStore?.whatsapp_business || "") as string}
@@ -647,7 +660,7 @@ function Index() {
       />
       <InstallPWAButton />
       <WhatsAppFlyIn />
-      <SalesChatBot />
+      <SalesChatBot storeEnabled={settings.addon_sales_agent === true || settings.addon_sales_agent === "true"} />
       {zoomImg && (
         <div
           className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"

@@ -34,12 +34,17 @@ export const createStoreForUser = createServerFn({ method: "POST" })
         name: z.string().min(1).max(80),
         city: z.string().max(80).optional().default(""),
         phone: z.string().max(30).optional().default(""),
+        layout: z.enum(["gallery", "shelves", "side"]).optional().default("gallery"),
+        addons: z
+          .object({ sales_agent: z.boolean().optional(), whatsapp: z.boolean().optional() })
+          .optional()
+          .default({}),
         theme: ThemeSchema.optional().default({}),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { name, city, phone, theme } = data;
+    const { name, city, phone, layout, addons, theme } = data;
     const { userId, claims } = context as { userId: string; claims: { email?: string } };
 
     // Generate unique slug
@@ -132,6 +137,9 @@ export const createStoreForUser = createServerFn({ method: "POST" })
         { store_id: store.id, key: "store_name", value: name as any },
         { store_id: store.id, key: "store_tagline", value: (city ? `חנות פרחים ב${city}` : "") as any },
         { store_id: store.id, key: "store_city", value: (city || "") as any },
+        { store_id: store.id, key: "storefront_layout", value: layout as any },
+        { store_id: store.id, key: "addon_sales_agent", value: (addons.sales_agent ?? true) as any },
+        { store_id: store.id, key: "addon_whatsapp", value: (addons.whatsapp ?? true) as any },
         ...(phone
           ? [
               { store_id: store.id, key: "store_phone", value: phone as any },
