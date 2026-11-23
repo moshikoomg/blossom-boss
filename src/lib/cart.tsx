@@ -29,6 +29,9 @@ const KEY = "tmm_cart_v1";
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [coupon, setCouponState] = useState<Ctx["coupon"]>(null);
+  // Don't write to storage until the saved cart was read, or a re-mount
+  // (e.g. after a hydration retry) would wipe the customer's cart.
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     try {
@@ -37,16 +40,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const c = localStorage.getItem(KEY + "_coupon");
       if (c) setCouponState(JSON.parse(c));
     } catch {}
+    setLoaded(true);
   }, []);
   useEffect(() => {
+    if (!loaded) return;
     try { localStorage.setItem(KEY, JSON.stringify(items)); } catch {}
-  }, [items]);
+  }, [items, loaded]);
   useEffect(() => {
+    if (!loaded) return;
     try {
       if (coupon) localStorage.setItem(KEY + "_coupon", JSON.stringify(coupon));
       else localStorage.removeItem(KEY + "_coupon");
     } catch {}
-  }, [coupon]);
+  }, [coupon, loaded]);
 
   const add: Ctx["add"] = (i) => setItems((s) => {
     const idx = s.findIndex((x) => x.productId === i.productId && (x.sizeLabel||"") === (i.sizeLabel||"") && JSON.stringify(x.extras||[]) === JSON.stringify(i.extras||[]) && (x.cardText||"") === (i.cardText||""));

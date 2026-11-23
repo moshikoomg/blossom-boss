@@ -242,7 +242,7 @@ function CheckoutPage() {
                 משלוח למספר כתובות
               </label>
             </div>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="אימייל (לקבלת עדכונים)" aria-label="אימייל" className="w-full bg-background border border-input rounded-xl px-4 py-3 outline-none focus:border-primary"/>
+            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="אימייל (לאישור ההזמנה)" aria-label="אימייל" className="w-full bg-background border border-input rounded-xl px-4 py-3 outline-none focus:border-primary"/>
             {!multiMode ? (
               <>
                 <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="שם מלא" aria-label="שם מלא" className="w-full bg-background border border-input rounded-xl px-4 py-3 outline-none focus:border-primary"/>

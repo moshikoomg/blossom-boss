@@ -1,4 +1,6 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
+
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 import { supabase } from "@/integrations/supabase/client";
 import { PLATFORM_TEMPLATE_STORE_ID } from "@/lib/platform-template";
 import { getStorefrontUrlSignature, isLazyPreviewMode } from "@/lib/preview-mode";
@@ -165,21 +167,24 @@ if (typeof window !== "undefined") {
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [store, setStore] = useState<Store | null>(() => {
-    if (typeof window === "undefined") return null;
+  // Start empty on both server and client so hydration matches, then fill
+  // from the cached store before the first paint (layout effect).
+  const [store, setStore] = useState<Store | null>(null);
+  useIsomorphicLayoutEffect(() => {
     // In preview mode never hydrate from a cached real store — that's what
     // caused the empty product squares (cached "previous" store id leaking in).
-    if (isLazyPreviewMode()) return null;
+    if (isLazyPreviewMode()) return;
     try {
       const cached = localStorage.getItem(LS_STORE_CACHE);
       if (cached) {
         const s = JSON.parse(cached) as Store;
         setSupabaseStoreHeader(s.id);
-        return s;
+        setStore((cur) => cur ?? s);
       }
-    } catch {}
-    return null;
-  });
+    } catch {
+      /* storage blocked */
+    }
+  }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

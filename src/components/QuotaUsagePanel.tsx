@@ -19,7 +19,9 @@ export function QuotaUsagePanel({ storeId }: { storeId: string }) {
       try { setData(await fetchQuotas({ data: { storeId } })); } catch {}
     })();
   }, [storeId]);
-  if (!data) return null;
+  // Hide the panel if the server answered with anything unexpected,
+  // instead of breaking the whole subscription page.
+  if (!data || typeof data.planKey !== "string" || !Array.isArray(data.quotas)) return null;
 
   return (
     <div dir="rtl" className="bg-card border border-border rounded-2xl p-5">
