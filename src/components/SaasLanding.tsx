@@ -701,11 +701,11 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
               <div className="relative">
                 <DialogHeader className="text-right mb-5">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/12 text-primary text-[11px] font-bold tracking-wide mb-3 w-fit">
-                    <Sparkles size={12} /> עוד שלב אחד
+                    <Sparkles size={12} /> פותחים חנות
                   </div>
-                  <DialogTitle className="text-2xl md:text-3xl font-black leading-tight text-foreground">פרטי החנות</DialogTitle>
+                  <DialogTitle className="text-2xl md:text-3xl font-black leading-tight text-foreground">החנות שלך, צעד אחר צעד</DialogTitle>
                   <DialogDescription className="text-sm text-muted-foreground pt-1">
-                    ארבעה פרטים קצרים, והחנות פתוחה.
+                    חמש שאלות קצרות, וזהו.
                   </DialogDescription>
                 </DialogHeader>
                 <Suspense fallback={<div className="py-10 grid place-items-center"><Loader2 className="animate-spin text-primary" size={24} /></div>}>

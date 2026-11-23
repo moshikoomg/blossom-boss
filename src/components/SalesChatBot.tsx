@@ -36,7 +36,7 @@ function loadSaved(): Saved | null {
   } catch { return null; }
 }
 
-export function SalesChatBot() {
+export function SalesChatBot({ storeEnabled = false }: { storeEnabled?: boolean } = {}) {
   const [open, setOpen] = useState(false);
   const [zoom, setZoom] = useState(false);
   const [input, setInput] = useState("");
@@ -330,7 +330,7 @@ export function SalesChatBot() {
   // Hide the chatbot completely for non-owners until the merchant has
   // opted in via the onboarding sequence. Owners always see it so they
   // can preview / QA without flipping the flag.
-  if (!enabled && isOwner !== true) return null;
+  if (!enabled && !storeEnabled && isOwner !== true) return null;
 
   return (
     <>

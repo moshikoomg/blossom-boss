@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { LegalEditor } from "@/components/LegalEditor";
 import { ThemeColorEditor } from "@/components/ThemeColorEditor";
+import { StorefrontStyleSection } from "@/components/admin/StorefrontStyleSection";
+import { AiDescribeButton } from "@/components/admin/AiDescribeButton";
 import { FeaturesPanel } from "@/components/FeaturesPanel";
 import { StoreLinkCard } from "@/components/StoreLinkCard";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
@@ -1367,7 +1369,9 @@ function ProductForm({ product, cats, onSave, onCancel }: any) {
         <h2 className="text-xl font-black mb-4">{p.id ? "עריכת מוצר" : "מוצר חדש"}</h2>
         <div className="space-y-3">
           <Field label="שם המוצר"><input value={p.name} onChange={(e)=>setP({...p, name: e.target.value})} className="w-full bg-background border border-input rounded-lg px-3 py-2"/></Field>
-          <Field label="תיאור"><textarea value={p.description||""} onChange={(e)=>setP({...p, description: e.target.value})} rows={2} className="w-full bg-background border border-input rounded-lg px-3 py-2"/></Field>
+          <Field label="תיאור"><textarea value={p.description||""} onChange={(e)=>setP({...p, description: e.target.value})} rows={3} className="w-full bg-background border border-input rounded-lg px-3 py-2"/>
+            <AiDescribeButton name={p.name || ""} price={Number(p.price)} current={p.description || ""} onText={(t)=>setP((x: any)=>({...x, description: t}))}/>
+          </Field>
           <ImageUpload value={p.image_url} onChange={(url)=>setP({...p, image_url: url})} label="תמונת המוצר" bucket="product-images"/>
           <MultiImageUpload values={gallery} onChange={setGallery} label="תמונות נוספות (גלריה - גלילה ולחיצה להגדלה)" bucket="product-images" max={12}/>
           <div className="grid grid-cols-3 gap-2">
@@ -2368,6 +2372,7 @@ function SettingsSection({ part = "business" }: { part?: "business" | "delivery"
     <>
       <div className="space-y-6 max-w-3xl">
         {part === "design" && (<>
+        <StorefrontStyleSection />
         <StoreBrandingSection />
         <ThemeColorEditor />
         </>)}
