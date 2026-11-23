@@ -40,7 +40,16 @@ import {
   publishedUrl,
   shouldUsePublishedOAuth,
 } from "@/lib/oauth-flow";
-import { format } from "date-fns";
+import { format as formatDate } from "date-fns";
+
+// One bad or missing date must never take the whole admin down.
+function format(d: Date | number, pattern: string, opts?: Parameters<typeof formatDate>[2]) {
+  try {
+    return formatDate(d, pattern, opts);
+  } catch {
+    return "";
+  }
+}
 import { he } from "date-fns/locale";
 import { Monitor, RefreshCw, Minimize2, Maximize2, Move, Image as ImageIcon } from "lucide-react";
 import {

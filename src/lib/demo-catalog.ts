@@ -43,23 +43,24 @@ const P = (
   ...extra,
 });
 
+// Each name matches what its photo really shows (checked one by one).
 export const DEMO_PRODUCTS: DemoProduct[] = [
-  P(1, "זר אביבי צבעוני", 189, "1490750967868-88aa4486c946", "demo-cat-bouquets", {
+  P(1, "זר שדה פסטלי", 189, "1487530811176-3780de880c2d", "demo-cat-bouquets", {
     badge: "הכי נמכר",
   }),
-  P(2, "ורדים אדומים קלאסיים", 229, "1455659817273-f96807779a8a", "demo-cat-roses"),
-  P(3, "זר טוליפים", 159, "1561181286-d3fee7d55364", "demo-cat-bouquets"),
-  P(4, "זר לבן ועדין", 249, "1457089328109-e5d9bd499191", "demo-cat-bouquets"),
-  P(5, "סחלב לבן בעציץ", 199, "1558603668-6570496b66f8", "demo-cat-plants"),
-  P(6, "ורדים ורודים", 179, "1487530811176-3780de880c2d", "demo-cat-roses", {
-    original_price: 210,
+  P(2, "ורדים אדומים", 229, "1494972308805-463bc619d34e", "demo-cat-roses"),
+  P(3, "זר טוליפים ורודים", 159, "1561181286-d3fee7d55364", "demo-cat-bouquets"),
+  P(4, "זר חמניות", 169, "1455659817273-f96807779a8a", "demo-cat-bouquets"),
+  P(5, "אנתוריום בעציץ", 149, "1567748157439-651aca2ff064", "demo-cat-plants"),
+  P(6, "ורדים בצבעי הקשת", 249, "1508610048659-a06b669e3321", "demo-cat-roses", {
+    original_price: 279,
   }),
-  P(7, "סוקולנטים בכלי עץ", 129, "1508610048659-a06b669e3321", "demo-cat-plants"),
-  P(8, "קופסת מתנה עם פרחים", 279, "1518895949257-7621c3c786d7", "demo-cat-gifts"),
-  P(9, "זר שדה פסטלי", 169, "1525310072745-f49212b5ac6d", "demo-cat-bouquets"),
-  P(10, "זר יוקרה גדול", 320, "1567748157439-651aca2ff064", "demo-cat-bouquets"),
-  P(11, "פרחים ושוקולד", 239, "1549007994-cb92caebd54b", "demo-cat-gifts"),
-  P(12, "זר חגיגי", 275, "1494972308805-463bc619d34e", "demo-cat-bouquets"),
+  P(7, "זר יוקרה כהה", 320, "1457089328109-e5d9bd499191", "demo-cat-bouquets"),
+  P(8, "קקטוס לבית", 119, "1558603668-6570496b66f8", "demo-cat-plants"),
+  P(9, "ורד בודד באגרטל", 79, "1518895949257-7621c3c786d7", "demo-cat-roses"),
+  P(10, "פרחי קוסמוס לבנים", 139, "1530092285049-1c42085fd395", "demo-cat-bouquets"),
+  P(11, "פרלינים שוקולד", 89, "1549007994-cb92caebd54b", "demo-cat-gifts"),
+  P(12, "פרחי אביב כתומים", 149, "1490750967868-88aa4486c946", "demo-cat-bouquets"),
 ];
 
 export const isDemoId = (id: string | null | undefined) => !!id && id.startsWith("demo-");
