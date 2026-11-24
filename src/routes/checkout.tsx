@@ -232,8 +232,9 @@ function CheckoutPage() {
         <h1 className="font-black">תשלום</h1>
         <div className="w-12"/>
       </header>
-      <main className="max-w-2xl mx-auto px-4 py-6">
-        <form onSubmit={submit} className="space-y-4">
+      <main className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-6">
+        <form onSubmit={submit} className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6 lg:items-start">
+          <div className="space-y-4 min-w-0">
           <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-black">פרטי משלוח</h2>
@@ -319,13 +320,15 @@ function CheckoutPage() {
               </div>
             </button>
           </div>
+          </div>
 
+          <div className="space-y-4 lg:sticky lg:top-20">
           <div className="bg-card border border-border rounded-2xl p-4 space-y-2">
             <h2 className="font-black mb-2">סיכום הזמנה</h2>
             {items.map((it) => (
-              <div key={it.productId + JSON.stringify(it.extras||[])} className="flex justify-between text-sm">
-                <span>{it.name} × {it.qty}{multiMode && assign[itemKey(it)] ? ` · ${stopBadge(assign[itemKey(it)])}` : ""}</span>
-                <span>₪{(it.price + (it.extras?.reduce((s, e) => s + e.price, 0) || 0)) * it.qty}</span>
+              <div key={it.productId + JSON.stringify(it.extras||[])} className="flex justify-between gap-3 text-sm">
+                <span className="min-w-0">{it.name} × {it.qty}{multiMode && assign[itemKey(it)] ? ` · ${stopBadge(assign[itemKey(it)])}` : ""}</span>
+                <span className="shrink-0 whitespace-nowrap">₪{(it.price + (it.extras?.reduce((s, e) => s + e.price, 0) || 0)) * it.qty}</span>
               </div>
             ))}
             {discount > 0 && <div className="flex justify-between text-sm text-emerald-700 pt-2 border-t border-border"><span>הנחה ({coupon?.code})</span><span>-₪{discount}</span></div>}
@@ -350,6 +353,7 @@ function CheckoutPage() {
           <button disabled={loading || items.length === 0 || !acceptedTerms} type="submit" className="w-full bg-primary text-primary-foreground font-black py-4 rounded-xl hover:bg-primary/90 disabled:opacity-50">
             {loading ? "מעבד..." : paymentMethod === "credit" ? `המשך לסליקה · ₪${total}` : `שלח לוואטסאפ · ₪${total}`}
           </button>
+          </div>
         </form>
       </main>
     </div>
