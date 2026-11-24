@@ -1122,7 +1122,33 @@ function OrdersSection() {
         </div>
       </div>
       {filtered.length === 0 ? <Empty text="אין הזמנות שתואמות לסינון"/> : (
-        <div className="bg-card rounded-2xl border border-border overflow-x-auto">
+        <>
+        {/* Phone: one card per order, so status and details are visible without side-scrolling. */}
+        <ul className="md:hidden space-y-3">
+          {filtered.map((o) => (
+            <li key={o.id} className="bg-card rounded-2xl border border-border p-4">
+              <div className="flex items-start justify-between gap-3">
+                <button onClick={()=>setSelected(o)} className="min-w-0 text-right">
+                  <p className="font-bold truncate">{o.customer_name} <span className="text-xs font-normal text-muted-foreground">#{o.order_number}</span></p>
+                  <p className="text-xs text-muted-foreground truncate">{o.delivery_address}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{format(new Date(o.created_at), "dd/MM HH:mm")}</p>
+                </button>
+                <p className="font-black shrink-0">₪{o.total}</p>
+              </div>
+              <div className="flex items-center justify-between gap-2 mt-3">
+                <select value={o.status} onChange={(e)=>update(o.id, { status: e.target.value })} aria-label="סטטוס הזמנה" className={`text-xs rounded-full px-3 py-1.5 border-0 font-bold ${STATUS_COLOR[o.status]}`}>
+                  {Object.entries(STATUS_LABEL).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+                <div className="flex items-center gap-1">
+                  <a href={`tel:${o.customer_phone}`} className="p-2 rounded-lg hover:bg-muted text-muted-foreground" aria-label="התקשר ללקוח"><Phone size={16}/></a>
+                  <button onClick={()=>setSelected(o)} className="text-xs font-bold text-primary px-3 py-2 rounded-lg hover:bg-primary/10">פרטים</button>
+                  <button onClick={()=>softDelete(o.id)} className="p-2 rounded-lg text-destructive hover:bg-destructive/10" aria-label="הסר מהטבלה"><Trash2 size={16}/></button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden md:block bg-card rounded-2xl border border-border overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs">
               <tr>
@@ -1159,6 +1185,7 @@ function OrdersSection() {
             </tbody>
           </table>
         </div>
+        </>
       )}
       {selected && <OrderDetail order={selected} onClose={()=>setSelected(null)} onUpdate={(patch: any)=>{ update(selected.id, patch); setSelected({...selected,...patch}); }}/>}
     </>

@@ -100,7 +100,7 @@ export function AccessibilityWidget() {
     <>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="fixed left-2 bottom-24 z-30 w-11 h-11 rounded-full bg-slate-400/90 text-white dark:bg-zinc-700 dark:text-zinc-100 shadow-md ring-1 ring-black/5 flex items-center justify-center opacity-80 hover:opacity-100 hover:scale-105 transition"
+        className="fixed left-3 bottom-4 md:left-2 md:bottom-24 z-30 w-9 h-9 md:w-11 md:h-11 rounded-full bg-slate-400/90 text-white dark:bg-zinc-700 dark:text-zinc-100 shadow-md ring-1 ring-black/5 flex items-center justify-center opacity-80 hover:opacity-100 hover:scale-105 transition"
         aria-label="פתח כלי נגישות"
         title="נגישות"
       >

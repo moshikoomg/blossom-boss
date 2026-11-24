@@ -165,11 +165,13 @@ function ProductPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-8">
-        <div className="grid md:grid-cols-2 gap-8">
-          <ProductGallery images={images} alt={p.name}/>
-          <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:items-start">
+          <div className="min-w-0 md:sticky md:top-20">
+            <ProductGallery images={images} alt={p.name}/>
+          </div>
+          <div className="space-y-4 min-w-0">
             {p.badge && <span className="inline-block bg-primary text-primary-foreground text-xs font-black px-3 py-1 rounded-full">{p.badge}</span>}
-            <h1 className="text-3xl md:text-4xl font-black text-foreground leading-tight">{p.name}</h1>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-foreground leading-tight break-words">{p.name}</h1>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Star size={14} className="fill-yellow-500 text-yellow-500"/> {p.rating} · {p.stock > 0 ? `במלאי (${p.stock})` : "אזל"}
             </div>
