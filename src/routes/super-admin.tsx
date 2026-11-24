@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Building2, Plus, Pencil, X, Check, Palette, LogOut, ArrowRight, Power, FileText } from "lucide-react";
+import { Building2, Plus, Pencil, X, Check, Palette, LogOut, ArrowRight, Power } from "lucide-react";
 import { ImageUpload } from "@/lib/image-upload";
 import { useServerFn } from "@tanstack/react-start";
 import { seedStoreCatalog } from "@/lib/seed-store.functions";
@@ -125,7 +125,6 @@ function SuperAdminShell({ email }: { email: string }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/super-admin/landing" className="text-sm px-3 py-2 rounded-xl border border-border hover:bg-muted flex items-center gap-1"><FileText size={14}/> תוכן דף הבית</Link>
             <Link to="/admin" className="text-sm px-3 py-2 rounded-xl border border-border hover:bg-muted flex items-center gap-1"><ArrowRight size={14}/> אזור ניהול חנות</Link>
             <button onClick={() => supabase.auth.signOut().then(() => location.reload())} className="text-sm px-3 py-2 rounded-xl border border-border hover:bg-muted flex items-center gap-1"><LogOut size={14}/> התנתק</button>
           </div>

@@ -22,7 +22,6 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AccessibilityRouteImport } from './routes/accessibility'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TrackOrderIdRouteImport } from './routes/track.$orderId'
-import { Route as SuperAdminLandingRouteImport } from './routes/super-admin.landing'
 import { Route as SSlugRouteImport } from './routes/s.$slug'
 import { Route as ProductsProductIdRouteImport } from './routes/products.$productId'
 import { Route as PreviewStoreIdRouteImport } from './routes/preview.$storeId'
@@ -101,11 +100,6 @@ const TrackOrderIdRoute = TrackOrderIdRouteImport.update({
   path: '/track/$orderId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SuperAdminLandingRoute = SuperAdminLandingRouteImport.update({
-  id: '/landing',
-  path: '/landing',
-  getParentRoute: () => SuperAdminRoute,
-} as any)
 const SSlugRoute = SSlugRouteImport.update({
   id: '/s/$slug',
   path: '/s/$slug',
@@ -179,14 +173,13 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/store-preview': typeof StorePreviewRoute
-  '/super-admin': typeof SuperAdminRouteWithChildren
+  '/super-admin': typeof SuperAdminRoute
   '/terms': typeof TermsRoute
   '/payment/cancel': typeof PaymentCancelRoute
   '/payment/success': typeof PaymentSuccessRoute
   '/preview/$storeId': typeof PreviewStoreIdRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/s/$slug': typeof SSlugRoute
-  '/super-admin/landing': typeof SuperAdminLandingRoute
   '/track/$orderId': typeof TrackOrderIdRoute
   '/api/public/meshulam-webhook': typeof ApiPublicMeshulamWebhookRoute
   '/api/public/run-scrape': typeof ApiPublicRunScrapeRoute
@@ -207,14 +200,13 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/store-preview': typeof StorePreviewRoute
-  '/super-admin': typeof SuperAdminRouteWithChildren
+  '/super-admin': typeof SuperAdminRoute
   '/terms': typeof TermsRoute
   '/payment/cancel': typeof PaymentCancelRoute
   '/payment/success': typeof PaymentSuccessRoute
   '/preview/$storeId': typeof PreviewStoreIdRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/s/$slug': typeof SSlugRoute
-  '/super-admin/landing': typeof SuperAdminLandingRoute
   '/track/$orderId': typeof TrackOrderIdRoute
   '/api/public/meshulam-webhook': typeof ApiPublicMeshulamWebhookRoute
   '/api/public/run-scrape': typeof ApiPublicRunScrapeRoute
@@ -236,14 +228,13 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/store-preview': typeof StorePreviewRoute
-  '/super-admin': typeof SuperAdminRouteWithChildren
+  '/super-admin': typeof SuperAdminRoute
   '/terms': typeof TermsRoute
   '/payment/cancel': typeof PaymentCancelRoute
   '/payment/success': typeof PaymentSuccessRoute
   '/preview/$storeId': typeof PreviewStoreIdRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/s/$slug': typeof SSlugRoute
-  '/super-admin/landing': typeof SuperAdminLandingRoute
   '/track/$orderId': typeof TrackOrderIdRoute
   '/api/public/meshulam-webhook': typeof ApiPublicMeshulamWebhookRoute
   '/api/public/run-scrape': typeof ApiPublicRunScrapeRoute
@@ -273,7 +264,6 @@ export interface FileRouteTypes {
     | '/preview/$storeId'
     | '/products/$productId'
     | '/s/$slug'
-    | '/super-admin/landing'
     | '/track/$orderId'
     | '/api/public/meshulam-webhook'
     | '/api/public/run-scrape'
@@ -301,7 +291,6 @@ export interface FileRouteTypes {
     | '/preview/$storeId'
     | '/products/$productId'
     | '/s/$slug'
-    | '/super-admin/landing'
     | '/track/$orderId'
     | '/api/public/meshulam-webhook'
     | '/api/public/run-scrape'
@@ -329,7 +318,6 @@ export interface FileRouteTypes {
     | '/preview/$storeId'
     | '/products/$productId'
     | '/s/$slug'
-    | '/super-admin/landing'
     | '/track/$orderId'
     | '/api/public/meshulam-webhook'
     | '/api/public/run-scrape'
@@ -351,7 +339,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StorePreviewRoute: typeof StorePreviewRoute
-  SuperAdminRoute: typeof SuperAdminRouteWithChildren
+  SuperAdminRoute: typeof SuperAdminRoute
   TermsRoute: typeof TermsRoute
   PaymentCancelRoute: typeof PaymentCancelRoute
   PaymentSuccessRoute: typeof PaymentSuccessRoute
@@ -461,13 +449,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrackOrderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/super-admin/landing': {
-      id: '/super-admin/landing'
-      path: '/landing'
-      fullPath: '/super-admin/landing'
-      preLoaderRoute: typeof SuperAdminLandingRouteImport
-      parentRoute: typeof SuperAdminRoute
-    }
     '/s/$slug': {
       id: '/s/$slug'
       path: '/s/$slug'
@@ -555,18 +536,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface SuperAdminRouteChildren {
-  SuperAdminLandingRoute: typeof SuperAdminLandingRoute
-}
-
-const SuperAdminRouteChildren: SuperAdminRouteChildren = {
-  SuperAdminLandingRoute: SuperAdminLandingRoute,
-}
-
-const SuperAdminRouteWithChildren = SuperAdminRoute._addFileChildren(
-  SuperAdminRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccessibilityRoute: AccessibilityRoute,
@@ -578,7 +547,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StorePreviewRoute: StorePreviewRoute,
-  SuperAdminRoute: SuperAdminRouteWithChildren,
+  SuperAdminRoute: SuperAdminRoute,
   TermsRoute: TermsRoute,
   PaymentCancelRoute: PaymentCancelRoute,
   PaymentSuccessRoute: PaymentSuccessRoute,

@@ -36,7 +36,11 @@ export const COLORS = [
   { id: "black", label: "שחור וזהב", primary: "#1a1a1a", accent: "#c9a84c" },
 ];
 
-const STEPS = ["style", "name", "details", "color", "addons"] as const;
+// Pilot signup keeps only what the owner must type: the store name, then
+// phone and city. Layout, colour and add-ons start on sensible defaults and
+// are changed later from the storefront's style panel.
+type Step = "style" | "name" | "details" | "color" | "addons";
+const STEPS: readonly Step[] = ["name", "details"];
 
 export function OnboardingWizard({ onComplete, initialBusinessName }: OnboardingWizardProps) {
   const createStoreFn = useServerFn(createStoreForUser);
