@@ -8,24 +8,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
   ArrowLeft,
   Check,
   Sparkles,
   Flower2,
-  MessageCircle,
-  CreditCard,
-  Truck,
-  Tag,
-  Bot,
-  Boxes,
   Loader2,
-  Star,
   LogIn,
   LayoutDashboard,
 } from "lucide-react";
@@ -40,63 +27,14 @@ import {
   publishedUrl,
   shouldUsePublishedOAuth,
 } from "@/lib/oauth-flow";
-import { useLandingContent } from "@/lib/landing-content";
 import { useServerFn } from "@tanstack/react-start";
 import { getPublicPlanSettings } from "@/lib/plan-settings.functions";
 import { TRIAL_DAYS, MONTHLY_PRICE_ILS } from "@/lib/plans";
-
-// Icon mapping for content-driven feature blocks.
-const ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
-  MessageCircle, Boxes, CreditCard, Tag, Truck, Bot, Sparkles, Flower2, Star, Check,
-};
 
 // Lazy-load the wizard so landing TTI stays fast.
 const OnboardingWizard = lazy(() =>
   import("@/components/OnboardingWizard").then((m) => ({ default: m.OnboardingWizard })),
 );
-
-/* -------------------------------------------------------------------------- */
-/*  Real flower photography (Unsplash CDN — no key required)                  */
-/* -------------------------------------------------------------------------- */
-
-const HERO_BOUQUETS = [
-  "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=600&q=70&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1455659817273-f96807779a8a?w=600&q=70&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=600&q=70&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=600&q=70&auto=format&fit=crop",
-];
-
-const STORE_EXAMPLES = [
-  { name: "פרחי שרה", city: "תל אביב", img: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=500&q=70&auto=format&fit=crop", price: 189 },
-  { name: "משתלת הגליל", city: "כרמיאל", img: "https://images.unsplash.com/photo-1508610048659-a06b669e3321?w=500&q=70&auto=format&fit=crop", price: 249 },
-  { name: "Blossom Studio", city: "הרצליה", img: "https://images.unsplash.com/photo-1567748157439-651aca2ff064?w=500&q=70&auto=format&fit=crop", price: 320 },
-  { name: "אורבן בלום", city: "רמת גן", img: "https://images.unsplash.com/photo-1525310072745-f49212b5ac6d?w=500&q=70&auto=format&fit=crop", price: 159 },
-  { name: "פרחי כרמל", city: "חיפה", img: "https://images.unsplash.com/photo-1534531173927-aeb928d54385?w=500&q=70&auto=format&fit=crop", price: 220 },
-  { name: "בית הפרח", city: "ירושלים", img: "https://images.unsplash.com/photo-1494972308805-463bc619d34e?w=500&q=70&auto=format&fit=crop", price: 275 },
-];
-
-const FEATURES = [
-  { icon: MessageCircle, title: "הזמנות בוואטסאפ", body: "כל הזמנה נופלת ישירות לוואטסאפ העסקי שלך עם פרטי הלקוח, הזר והכתובת." },
-  { icon: Boxes, title: "ניהול מלאי חכם", body: "עדכון מחירים ומלאי בקליק. מסונכרן בין הסניפים והמכשירים." },
-  { icon: CreditCard, title: "Bit · אשראי · העברה", body: "תשלום ישיר ללקוח בלי עמלות סליקה מנופחות. כסף בעו״ש מיד." },
-  { icon: Tag, title: "קופונים ומבצעים", body: "קוד הנחה, מחיר מבצע, באנדל זרים — כל מהלך שיווקי בשליטה מלאה." },
-  { icon: Truck, title: "משלוחים לפי אזור", body: "מחיר משלוח דינמי, חלונות שעות, ושיוך לשליחים בלחיצה אחת." },
-  { icon: Bot, title: "מוכר AI 24/7", body: "סוכן חכם שעונה ללקוחות, ממליץ על זרים ומסגור הזמנות גם בלילה." },
-];
-
-const TESTIMONIALS = [
-  { name: "מורן לוי", store: "פרחי מורן · רעננה", quote: "תוך שלוש דקות מקליק על Google היתה לי חנות פעילה עם 32 זרים. הלקוחות מזמינים ישירות לוואטסאפ — סוף לבלגן ב-DM של אינסטגרם." },
-  { name: "יוסי כהן", store: "משתלת הוורד · חולון", quote: "הקופונים והמבצעים הכפילו לי את ההזמנות בשישי. הAI עונה ללקוחות בערב במקומי." },
-  { name: "תמר אברהם", store: "Blossom · תל אביב", quote: "עיצוב יוקרתי שמרגיש כמו אתר של 80,000 שקל. שילמתי כלום וקיבלתי הכל." },
-];
-
-const FAQS = [
-  { q: "כמה זמן לוקח להעלות חנות?", a: "דקה. מתחברים עם Google, ממלאים שם, טלפון ועיר, והחנות פתוחה. את המוצרים מוסיפים אחר כך מהניהול." },
-  { q: "אני לא טכני בכלל. אסתדר?", a: "בוודאי. הכל בעברית, מהמובייל, ובלי קוד. אם יש שאלה — צ׳אט תמיכה חי בעברית מהדאשבורד." },
-  { q: "איך מקבלים תשלומים?", a: "Bit, אשראי, העברה בנקאית או מזומן במשלוח. הכסף נכנס ישירות לחשבון שלך — בלי עמלת ביניים." },
-  { q: "אני יכול לעצב את החנות כמו שאני רוצה?", a: "כן. בוחרים פלטת צבעים, מעלים לוגו, משנים תמונות, עורכים מחירים — הכל מהדאשבורד בעברית בלי תלות בנו." },
-  { q: "מה קורה אם אני רוצה לבטל?", a: "אפשר לעצור בכל רגע. אין התחייבות. החנות והנתונים נשארים שלך לייצוא." },
-];
 
 /* -------------------------------------------------------------------------- */
 /*  Component                                                                 */
@@ -119,7 +57,6 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
   const [signingIn, setSigningIn] = useState(false);
   const [usePublishedOAuth, setUsePublishedOAuth] = useState(false);
   const dialogContentRef = useRef<HTMLDivElement | null>(null);
-  const content = useLandingContent();
 
   // Whenever the dialog opens or the inner step changes, snap scroll to top so
   // the header + first input are visible. Without this, a focused input inside
@@ -284,10 +221,12 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
     }
   }
 
+  const signupLabel = GOOGLE_AUTH_ENABLED ? "התחברות עם חשבון Google" : "הרשמה עם אימייל וסיסמה";
+
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground antialiased">
-      {/* ---------- Sticky header ---------- */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/75 border-b border-border/60">
+      {/* ---------- Header ---------- */}
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/80 border-b border-border/60">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <a href="#top" className="flex items-center gap-2 font-black text-lg tracking-tight">
             <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent grid place-items-center text-primary-foreground shadow-md">
@@ -295,339 +234,115 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
             </span>
             Blossom Boss
           </a>
-          <nav className="hidden md:flex items-center gap-7 text-sm text-muted-foreground">
-            <a href="#examples" className="hover:text-foreground transition">דוגמאות</a>
-            <a href="#features" className="hover:text-foreground transition">יכולות</a>
-            <a href="#pricing" className="hover:text-foreground transition">תוכניות</a>
-            <a href="#faq" className="hover:text-foreground transition">שאלות</a>
-          </nav>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleHeaderAuthClick}
-              className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-foreground/15 bg-background/70 text-foreground text-sm font-bold whitespace-nowrap hover:bg-foreground/5 transition"
-            >
-              {headerAuth?.signedIn && headerAuth.ownsStore ? (
-                <><LayoutDashboard size={15} /> ניהול חנות</>
-              ) : (
-                <><LogIn size={15} /> התחברות</>
-              )}
-            </button>
-            <button
-              onClick={openDialog}
-              className="hidden sm:inline-flex items-center gap-1.5 h-10 px-5 rounded-full bg-foreground text-background text-sm font-bold whitespace-nowrap hover:scale-[1.03] transition-transform shadow-lg"
-            >
-              פתח חנות עכשיו
-              <ArrowLeft size={16} />
-            </button>
-          </div>
+          <button
+            onClick={handleHeaderAuthClick}
+            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-foreground/15 bg-background/70 text-foreground text-sm font-bold whitespace-nowrap hover:bg-foreground/5 transition"
+          >
+            {headerAuth?.signedIn && headerAuth.ownsStore ? (
+              <><LayoutDashboard size={15} /> ניהול חנות</>
+            ) : (
+              <><LogIn size={15} /> התחברות</>
+            )}
+          </button>
         </div>
       </header>
 
-      {/* ---------- Hero ---------- */}
-      <section id="top" className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/10 via-background to-accent/10" />
-        <div className="absolute -top-32 -right-32 -z-10 w-[34rem] h-[34rem] rounded-full bg-primary/15 blur-3xl" />
-        <div className="absolute -bottom-40 -left-32 -z-10 w-[34rem] h-[34rem] rounded-full bg-accent/20 blur-3xl" />
-
-        <div className="container mx-auto px-4 pt-16 pb-24 md:pt-24 md:pb-32 grid md:grid-cols-12 gap-10 items-center">
-          <div className="md:col-span-7 space-y-7 text-center md:text-right">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-foreground/5 border border-foreground/10 text-xs font-bold">
-              <Sparkles size={13} className="text-primary" />
-              {content.hero.badge}
-            </div>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black leading-[1.05] tracking-tight">
-              {content.hero.title1}
-              <br />
-              <span className="bg-gradient-to-l from-primary via-primary to-accent bg-clip-text text-transparent">
-                {content.hero.title2}
-              </span>
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto md:mx-0 leading-relaxed">
-              {content.hero.lede}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
-              <button
-                onClick={openDialog}
-                className="inline-flex items-center justify-center gap-2 h-14 px-7 rounded-2xl bg-primary text-primary-foreground font-black text-base shadow-xl shadow-primary/30 hover:scale-[1.02] transition-all"
-              >
-                {content.hero.ctaPrimary}
-                <ArrowLeft size={18} />
-              </button>
-              <a
-                href="#examples"
-                className="inline-flex items-center justify-center gap-2 h-14 px-7 rounded-2xl border-2 border-foreground/15 font-bold text-base hover:bg-foreground/5 transition"
-              >
-                {content.hero.ctaSecondary}
-              </a>
-            </div>
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-2 text-sm text-muted-foreground pt-2">
-              <span className="flex items-center gap-1.5"><Check size={16} className="text-primary" /> הקמה ב-2 קליקים</span>
-              <span className="flex items-center gap-1.5"><Check size={16} className="text-primary" /> ללא ידע טכני</span>
-              <span className="flex items-center gap-1.5"><Check size={16} className="text-primary" /> Bit / אשראי</span>
-            </div>
+      <main id="top" className="container mx-auto px-4 max-w-2xl">
+        {/* ---------- Pitch ---------- */}
+        <section className="pt-12 pb-10 md:pt-20 text-center space-y-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
+            <Sparkles size={13} /> פיילוט · מחפשים חנויות פרחים ראשונות
           </div>
-
-          {/* Floating bouquet collage */}
-          <div className="md:col-span-5 relative h-[420px] md:h-[520px]">
-            <FloatingCard src={content.heroImages[0]} className="absolute top-0 right-4 w-44 h-56 md:w-56 md:h-72 rotate-[-6deg] animate-fade-in" delay={0} />
-            <FloatingCard src={content.heroImages[1]} className="absolute top-16 left-0 w-40 h-52 md:w-48 md:h-64 rotate-[4deg]" delay={120} />
-            <FloatingCard src={content.heroImages[2]} className="absolute bottom-4 right-16 w-44 h-56 md:w-56 md:h-72 rotate-[8deg]" delay={240} />
-            <FloatingCard src={content.heroImages[3]} className="absolute bottom-20 left-6 w-36 h-44 md:w-44 md:h-56 rotate-[-10deg]" delay={360} />
-            {/* Floating price chip */}
-            <div className="absolute bottom-2 right-0 bg-background border border-border rounded-2xl shadow-2xl px-4 py-3 flex items-center gap-3 animate-fade-in" style={{ animationDelay: "500ms" }}>
-              <div className="w-9 h-9 rounded-full bg-primary/15 grid place-items-center text-primary">
-                <MessageCircle size={18} />
-              </div>
-              <div className="text-right">
-                <div className="text-[11px] text-muted-foreground">הזמנה חדשה</div>
-                <div className="text-sm font-black">זר מיוחד · 249₪</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ---------- Live store examples (marquee) ---------- */}
-      <section id="examples" className="py-20 border-y border-border/60 bg-foreground/[0.02] overflow-hidden">
-        <div className="container mx-auto px-4 mb-10 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold mb-3">
-            <Sparkles size={13} /> {content.examples.badge}
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight">{content.examples.title}</h2>
-          <p className="text-muted-foreground mt-3 max-w-xl mx-auto">{content.examples.lede}</p>
-        </div>
-
-        <div className="relative">
-          <div className="flex gap-5 animate-marquee whitespace-nowrap" style={{ width: "max-content" }}>
-            {[...content.examples.items, ...content.examples.items].map((s, i) => (
-              <StoreCard key={`${s.name}-${i}`} {...s} onClick={openDialog} />
-            ))}
-          </div>
-          {/* Fade edges */}
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-background to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-background to-transparent" />
-        </div>
-      </section>
-
-      {/* ---------- 2 clicks timeline ---------- */}
-      <section className="py-24">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/20 text-foreground text-xs font-bold mb-3">
-              2 לחיצות · 30 שניות
-            </div>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight">2 קליקים לחנות פעילה</h2>
-            <p className="text-muted-foreground mt-3 max-w-xl mx-auto">בלי טפסים אינסופיים. בלי OTP. בלי אימייל אישור. רק הקלקה.</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { n: "01", t: "התחבר עם Google", d: "לחיצה אחת. בלי לזכור סיסמה, בלי טפסים." },
-              { n: "02", t: "בחר מסלול", d: "יש לך אתר? נסרוק אוטומטית. אין? נבחר ביחד פלטה." },
-              { n: "03", t: "החנות עולה", d: "30 שניות לחנות אמיתית עם מוצרים, מחירים ועיצוב." },
-            ].map((s, i) => (
-              <div
-                key={s.n}
-                className="relative p-7 rounded-3xl border border-border bg-card hover:shadow-xl transition-all group animate-fade-in"
-                style={{ animationDelay: `${i * 120}ms` }}
-              >
-                <div className="absolute -top-4 right-6 px-3 h-8 rounded-full bg-primary text-primary-foreground text-xs font-black grid place-items-center shadow-lg">
-                  {s.n}
-                </div>
-                <div className="font-black text-xl mb-2">{s.t}</div>
-                <div className="text-sm text-muted-foreground leading-relaxed">{s.d}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="text-center mt-12">
+          <h1 className="text-4xl md:text-5xl font-black leading-tight tracking-tight">
+            אתר הזמנות פשוט
+            <br />
+            <span className="text-primary">לחנות הפרחים שלך</span>
+          </h1>
+          <p className="text-lg text-muted-foreground leading-relaxed">
+            אנחנו בונים מערכת קטנה ופשוטה לחנויות פרחים: אתר עם קישור משלך שלקוחות מזמינים ממנו,
+            ומקום אחד לראות את ההזמנות והמשלוחים. המערכת חדשה ונמצאת בפיילוט, ואנחנו מחפשים כמה
+            חנויות שינסו אותה ויגידו לנו מה עובד ומה חסר.
+          </p>
+          <div className="space-y-3">
             <button
               onClick={openDialog}
-              className="inline-flex items-center gap-2 h-12 px-6 rounded-full bg-foreground text-background font-bold text-sm hover:scale-[1.03] transition shadow-lg"
+              className="inline-flex items-center justify-center gap-2 h-14 px-8 rounded-2xl bg-primary text-primary-foreground font-black text-base shadow-xl shadow-primary/25 hover:scale-[1.02] transition-all w-full sm:w-auto"
             >
-              פתח חנות עכשיו
-              <ArrowLeft size={16} />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ---------- Features bento ---------- */}
-      <section id="features" className="py-24 bg-foreground/[0.02] border-y border-border/60">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight">{content.features.title}</h2>
-            <p className="text-muted-foreground mt-3 max-w-2xl mx-auto">{content.features.lede}</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-4">
-            {content.features.items.map((f, i) => {
-              const Ico = ICON_MAP[f.icon] || Sparkles;
-              return (
-                <div
-                  key={f.title + i}
-                  className="p-6 rounded-3xl bg-card border border-border hover:border-primary/40 hover:-translate-y-1 transition-all"
-                  style={{ animationDelay: `${i * 80}ms` }}
-                >
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary grid place-items-center mb-4">
-                    <Ico size={22} />
-                  </div>
-                  <div className="font-black text-lg mb-1.5">{f.title}</div>
-                  <div className="text-sm text-muted-foreground leading-relaxed">{f.body}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ---------- Product mockup showcase ---------- */}
-      <section className="py-24">
-        <div className="container mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
-          <div className="space-y-5 order-2 md:order-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
-              <Flower2 size={13} /> חוויה מובייל-פירסט
-            </div>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
-              חנות שנראית כאילו<br />שילמת עליה הון.
-            </h2>
-            <p className="text-muted-foreground text-lg leading-relaxed">
-              עיצוב יוקרתי שמותאם מובייל, מהיר טעינה, נגיש ב-RTL מלא, ועובד מצוין מהוואטסאפ והאינסטגרם של החנות שלך.
-            </p>
-            <ul className="space-y-2.5 pt-2">
-              {["גלריות מוצר עם זום", "סל קניות חכם", "חישוב משלוחים אוטומטי", "צ׳אט AI שמוכר במקומך"].map((t) => (
-                <li key={t} className="flex items-center gap-2 text-sm">
-                  <Check size={18} className="text-primary" /> {t}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="order-1 md:order-2 relative h-[520px]">
-            {/* Desktop frame */}
-            <div className="absolute top-0 left-0 w-[88%] h-[68%] rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
-              <div className="h-7 bg-foreground/5 border-b border-border flex items-center gap-1.5 px-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
-                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
-                <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
-              </div>
-              <img src={HERO_BOUQUETS[1]} alt="חנות פרחים לדוגמה — תצוגת דסקטופ" className="w-full h-full object-cover" loading="lazy" />
-            </div>
-            {/* Phone frame */}
-            <div className="absolute bottom-0 right-0 w-[42%] h-[78%] rounded-[2rem] bg-foreground p-2 shadow-2xl">
-              <div className="w-full h-full rounded-[1.6rem] overflow-hidden bg-card relative">
-                <img src={HERO_BOUQUETS[2]} alt="חנות פרחים לדוגמה — תצוגת מובייל" className="w-full h-full object-cover" loading="lazy" />
-                <div className="absolute bottom-3 left-3 right-3 p-3 rounded-xl bg-background/95 backdrop-blur">
-                  <div className="text-[11px] text-muted-foreground">זר רומנטי</div>
-                  <div className="flex items-center justify-between">
-                    <div className="font-black">189₪</div>
-                    <div className="text-[10px] px-2 py-0.5 rounded-full bg-primary text-primary-foreground font-bold">הוספה לסל</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ---------- Testimonials ---------- */}
-      <section className="py-24 bg-foreground/[0.02] border-y border-border/60">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight">{content.testimonials.title}</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-5">
-            {content.testimonials.items.map((t, i) => (
-              <figure key={t.name + i} className="p-6 rounded-3xl bg-card border border-border">
-                <div className="flex gap-0.5 text-primary mb-3">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} size={16} fill="currentColor" strokeWidth={0} />
-                  ))}
-                </div>
-                <blockquote className="text-sm leading-relaxed mb-4">"{t.quote}"</blockquote>
-                <figcaption>
-                  <div className="font-black text-sm">{t.name}</div>
-                  <div className="text-xs text-muted-foreground">{t.store}</div>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ---------- Pricing teaser ---------- */}
-      <section id="pricing" className="py-24">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight">מחיר אחד. בלי הפתעות.</h2>
-            <p className="text-muted-foreground mt-3">{plan.trial_days} יום ניסיון חינם, בלי כרטיס אשראי. ממשיכים רק אם זה עובד לכם.</p>
-          </div>
-          <div className="max-w-md mx-auto">
-            <div className="relative p-7 rounded-3xl bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-2xl shadow-primary/30">
-              <div className="absolute -top-3 right-6 px-3 h-7 rounded-full bg-foreground text-background text-[11px] font-black grid place-items-center">{plan.trial_days} יום חינם</div>
-              <div className="text-xs font-bold opacity-80 tracking-wider mb-1">הכל כלול</div>
-              <div className="flex items-end gap-1 mb-1">
-                <div className="text-5xl font-black">₪{plan.monthly_price_ils}</div>
-                <div className="text-sm opacity-80 mb-1.5">/חודש + מע״מ</div>
-              </div>
-              <div className="text-sm opacity-80 mb-5">חנות מלאה · מוכר AI · קופונים · ביטול בכל רגע</div>
-              <ul className="space-y-2 text-sm mb-6">
-                <li className="flex gap-2 items-center"><Check size={16} /> קישור אישי לחנות שלכם</li>
-                <li className="flex gap-2 items-center"><Check size={16} /> הזמנות לוואטסאפ, Bit ואשראי</li>
-                <li className="flex gap-2 items-center"><Check size={16} /> מוכר AI אוטומטי</li>
-                <li className="flex gap-2 items-center"><Check size={16} /> קופונים · באנדלים · אנליטיקס</li>
-              </ul>
-              <button onClick={openDialog} className="w-full h-12 rounded-xl bg-foreground text-background font-bold hover:scale-[1.02] transition">
-                מתחילים {plan.trial_days} יום חינם
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ---------- FAQ ---------- */}
-      <section id="faq" className="py-24 bg-foreground/[0.02] border-y border-border/60">
-        <div className="container mx-auto px-4 max-w-3xl">
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-center mb-12">{content.faq.title}</h2>
-          <Accordion type="single" collapsible className="w-full">
-            {content.faq.items.map((f, i) => (
-              <AccordionItem key={i} value={`q-${i}`} className="border-b border-border">
-                <AccordionTrigger className="text-right text-base font-bold py-5 hover:no-underline">{f.q}</AccordionTrigger>
-                <AccordionContent className="text-sm text-muted-foreground leading-relaxed text-right">{f.a}</AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </div>
-      </section>
-
-      {/* ---------- Final CTA ---------- */}
-      <section className="py-24">
-        <div className="container mx-auto px-4">
-          <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-primary via-primary to-accent p-12 md:p-20 text-center text-primary-foreground shadow-2xl shadow-primary/30">
-            <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-white/15 blur-3xl" />
-            <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
-            <h2 className="relative text-3xl md:text-5xl font-black tracking-tight leading-tight">
-              {content.finalCta.title.split("\n").map((line, i, arr) => (
-                <span key={i}>{line}{i < arr.length - 1 ? <br /> : null}</span>
-              ))}
-            </h2>
-            <p className="relative mt-4 text-base md:text-lg opacity-90 max-w-xl mx-auto">
-              {content.finalCta.lede}
-            </p>
-            <button
-              onClick={openDialog}
-              className="relative mt-8 inline-flex items-center gap-2 h-14 px-8 rounded-2xl bg-foreground text-background font-black text-base shadow-2xl hover:scale-[1.03] transition"
-            >
-              {content.finalCta.button}
+              הצטרפות לפיילוט
               <ArrowLeft size={18} />
             </button>
+            <p className="text-sm text-muted-foreground">בלי כרטיס אשראי ובלי התחייבות.</p>
           </div>
-        </div>
-      </section>
+        </section>
+
+        {/* ---------- What signup asks ---------- */}
+        <section className="py-10 border-t border-border/60">
+          <h2 className="text-2xl font-black mb-2 text-center">מה ממלאים בהרשמה</h2>
+          <p className="text-muted-foreground text-center mb-6">רק את הפרטים של החנות שלך. בערך דקה.</p>
+          <ol className="space-y-3">
+            {[
+              signupLabel,
+              "שם החנות",
+              "טלפון לוואטסאפ ועיר (העיר לא חובה)",
+            ].map((t, i) => (
+              <li key={t} className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border">
+                <span className="w-8 h-8 shrink-0 rounded-full bg-primary text-primary-foreground text-sm font-black grid place-items-center">
+                  {i + 1}
+                </span>
+                <span className="font-bold">{t}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="text-sm text-muted-foreground mt-4 text-center">
+            את המוצרים, התמונות והמחירים מוסיפים אחר כך מהניהול, בקצב שלך.
+          </p>
+        </section>
+
+        {/* ---------- What exists today ---------- */}
+        <section className="py-10 border-t border-border/60">
+          <h2 className="text-2xl font-black mb-6 text-center">מה יש במערכת היום</h2>
+          <ul className="space-y-3">
+            {[
+              "קישור לחנות שלך, לשלוח ללקוחות או לשים באינסטגרם",
+              "העלאת מוצרים, תמונות ומחירים מהטלפון",
+              "הזמנות מהאתר מגיעות למסך הניהול, עם כפתור וואטסאפ ללקוח",
+              "רשימת משלוחים להיום ולמחר",
+            ].map((t) => (
+              <li key={t} className="flex items-start gap-2.5">
+                <Check size={18} className="text-primary mt-0.5 shrink-0" />
+                <span>{t}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* ---------- Pilot terms ---------- */}
+        <section className="py-10 border-t border-border/60">
+          <h2 className="text-2xl font-black mb-4 text-center">מה זה אומר פיילוט</h2>
+          <div className="space-y-3 text-muted-foreground leading-relaxed">
+            <p>המערכת עובדת, אבל היא חדשה. יכולות להיות תקלות, ואנחנו מתקנים אותן מהר.</p>
+            <p>{plan.trial_days} הימים הראשונים בלי תשלום ובלי כרטיס אשראי. נשמח לשמוע מכם מה לשפר.</p>
+          </div>
+        </section>
+
+        {/* ---------- Final CTA ---------- */}
+        <section className="py-12 border-t border-border/60 text-center">
+          <button
+            onClick={openDialog}
+            className="inline-flex items-center justify-center gap-2 h-14 px-8 rounded-2xl bg-primary text-primary-foreground font-black text-base shadow-xl shadow-primary/25 hover:scale-[1.02] transition-all w-full sm:w-auto"
+          >
+            הצטרפות לפיילוט
+            <ArrowLeft size={18} />
+          </button>
+        </section>
+      </main>
 
       {/* ---------- Footer ---------- */}
-      <footer className="border-t border-border py-10 text-center text-sm text-muted-foreground">
-        <div className="container mx-auto px-4">
-          © {new Date().getFullYear()} Blossom Boss · פלטפורמת חנויות פרחים לישראל
+      <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
+        <div className="container mx-auto px-4 flex flex-wrap justify-center gap-x-4 gap-y-1">
+          <span>© {new Date().getFullYear()} Blossom Boss</span>
+          <a href="/terms" className="hover:text-foreground">תנאי שימוש</a>
+          <a href="/privacy" className="hover:text-foreground">פרטיות</a>
         </div>
       </footer>
 
@@ -654,7 +369,7 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
                     <Sparkles size={26} />
                   </div>
                   <DialogTitle className="text-2xl md:text-3xl font-black leading-tight text-foreground">
-                    שתי לחיצות לחנות שלך
+                    הצטרפות לפיילוט
                   </DialogTitle>
                   <DialogDescription className="text-sm leading-relaxed pt-1.5 text-muted-foreground">
                     {GOOGLE_AUTH_ENABLED ? "התחברות מאובטחת עם Google" : "הרשמה קצרה עם אימייל וסיסמה"} כדי שנוכל לשמור עבורך את החנות ולתת לך גישת מנהל מלאה.
@@ -676,7 +391,7 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
                 <ul className="mt-6 space-y-2.5 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2"><Check size={16} className="text-primary flex-shrink-0" /> {GOOGLE_AUTH_ENABLED ? "ללא טפסים. ללא קוד SMS." : "בלי קוד SMS. רק אימייל וסיסמה."}</li>
                   <li className="flex items-center gap-2"><Check size={16} className="text-primary flex-shrink-0" /> החנות נשמרת לחשבון שלך אוטומטית.</li>
-                  <li className="flex items-center gap-2"><Check size={16} className="text-primary flex-shrink-0" /> אפשר לבטל בכל רגע.</li>
+                  <li className="flex items-center gap-2"><Check size={16} className="text-primary flex-shrink-0" /> בלי כרטיס אשראי.</li>
                 </ul>
               {usePublishedOAuth && (
                 <p className="mt-5 text-xs text-muted-foreground bg-muted/40 border border-border/60 rounded-xl p-3 leading-relaxed">
@@ -705,7 +420,7 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
                   </div>
                   <DialogTitle className="text-2xl md:text-3xl font-black leading-tight text-foreground">החנות שלך, צעד אחר צעד</DialogTitle>
                   <DialogDescription className="text-sm text-muted-foreground pt-1">
-                    חמש שאלות קצרות, וזהו.
+                    שם החנות וטלפון, וזהו. את השאר מסדרים אחר כך.
                   </DialogDescription>
                 </DialogHeader>
                 <Suspense fallback={<div className="py-10 grid place-items-center"><Loader2 className="animate-spin text-primary" size={24} /></div>}>
@@ -723,45 +438,6 @@ export function SaasLanding({ autoOpen }: SaasLandingProps = {}) {
 /* -------------------------------------------------------------------------- */
 /*  Sub-components                                                            */
 /* -------------------------------------------------------------------------- */
-
-function FloatingCard({ src, className, delay = 0 }: { src: string; className?: string; delay?: number }) {
-  return (
-    <div
-      className={`rounded-3xl overflow-hidden bg-card border border-border shadow-2xl animate-fade-in ${className ?? ""}`}
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <img src={src} alt="זר פרחים לדוגמה" className="w-full h-full object-cover" loading="lazy" />
-    </div>
-  );
-}
-
-function StoreCard({ name, city, img, price, onClick }: { name: string; city: string; img: string; price: number; onClick?: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={`פתח חנות כמו ${name}`}
-      className="text-right inline-block w-64 rounded-3xl overflow-hidden bg-card border border-border shadow-md hover:shadow-xl hover:-translate-y-0.5 transition cursor-pointer"
-    >
-      <div className="h-44 overflow-hidden">
-        <img src={img} alt={`חנות הפרחים ${name} ב${city}`} className="w-full h-full object-cover" loading="lazy" />
-      </div>
-      <div className="p-4 text-right">
-        <div className="font-black text-base">{name}</div>
-        <div className="text-xs text-muted-foreground mb-3">{city}</div>
-        <div className="flex items-center justify-between">
-          <span
-            onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-            className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 font-bold cursor-pointer"
-          >
-            <MessageCircle size={11} /> WhatsApp
-          </span>
-          <span className="text-sm font-black">החל מ-{price}₪</span>
-        </div>
-      </div>
-    </button>
-  );
-}
 
 function GoogleIcon() {
   return (
